@@ -30,8 +30,8 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# env files
+.env*
 
 # typescript
 *.tsbuildinfo
@@ -41,3 +41,10 @@ example
 # generated native folders
 /ios
 /android
+
+# editor
+.vscode/
+
+# claude code (personal)
+.claude/settings.local.json
+CLAUDE.local.md
