@@ -44,6 +44,7 @@ example
 
 # editor
 .vscode/
+.idea/
 
 # claude code (personal)
 .claude/settings.local.json
