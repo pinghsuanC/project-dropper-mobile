@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "project-dropper",
-    "slug": "project-dropper",
+    "name": "project-dropper-mobile",
+    "slug": "project-dropper-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "projectdropper",
+    "scheme": "projectdroppermobile",
     "userInterfaceStyle": "automatic",
     "android": {
       "adaptiveIcon": {

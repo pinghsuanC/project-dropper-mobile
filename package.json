@@ -1,5 +1,5 @@
 {
-  "name": "project-dropper",
+  "name": "project-dropper-mobile",
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {

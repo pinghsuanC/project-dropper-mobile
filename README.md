@@ -1,6 +1,12 @@
-# Project Dropper
+# Project Dropper Mobile
 
-Android app built with Expo (SDK 58) and React Native.
+The Android app for Project Dropper.
+
+## Tech
+
+- **[Expo](https://expo.dev)** (SDK 58): React Native framework, with Expo Router for navigation
+- **[TypeScript](https://www.typescriptlang.org)**
+- **[Claude](https://claude.com/claude-code)**: built with Claude Code
 
 ## Run
 
@@ -10,5 +16,3 @@ npx expo start
 ```
 
 Scan the QR code with Expo Go on an Android phone, or press `a` to open it on a running emulator.
-
-Screens live in `src/app/` (Expo Router).
