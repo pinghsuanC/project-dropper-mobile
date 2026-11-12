@@ -49,3 +49,9 @@ example
 # claude code (personal)
 .claude/settings.local.json
 CLAUDE.local.md
+
+# test coverage reports
+coverage/
+
+# ui-reviewer captures
+.ui-review/
