@@ -20,7 +20,9 @@ Related material lives under `context/`:
   in its `README.md`), not into this file. This file keeps only rules and pointers.
 - `context/tracker/current-feature.md`: the feature being worked on now (status, branch,
   implementation details) and the history of finished features. Managed by the
-  `/current-feature` skill; don't edit it by hand during a feature.
+  `/current-feature` skill; don't edit it by hand during a feature. Its `# Future Features`
+  section is the planned-features list: change it only when the user asks, through
+  `/current-feature future`.
 
 ## Skills
 
@@ -30,6 +32,8 @@ Related material lives under `context/`:
   and exposed env variables. Read-only.
 - `/current-feature complete`: update the tracker history, make the feature's single commit
   (after approval), push and open a PR into `main`.
+- `/current-feature future <description>`: append planned features to the tracker's
+  `# Future Features` section.
 - `/code-reviewer [path | --changed]`: read-only report of exposed secrets, unused code,
   values outside `src/constants/`, text outside `strings.ts`, and components to refactor.
 

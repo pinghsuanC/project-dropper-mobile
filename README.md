@@ -53,30 +53,7 @@ Done when the desktopâ€™s test_download receives a file sent from the phone. ðŸŽ
 
 ## Future features
 
-Grouped by the app's sections (the same ones as the prototype's dev menu).
-
-### Register
-- User register and login
-
-### Pairing
-- Cancel button on Pairing step 2 (while waiting for the server)
-
-### Server
-- Storage size limit (keep the total below 30 GB)
-- Storage free tier checking (stop working if the current month's quota has been met)
-
-### Upload
-- Rename files on the phone
-- File previews
-- Chunking larger files (allow up to 10 GB)
-- Cancel during upload
-
-### Device & User (Properties)
-- Delete registry from server: un-registers the phone, deletes the local key (PEM) and device ID, and so disconnects it from the PC. Asks for confirmation first
-
-### Whole app
-- iOS compatibility (turn it into a web app)
-- Multi-language support (all text is already in `strings.ts`; CJK fonts noted in `context/details/2020-typography.md`)
+Listed under `# Future Features` in `context/tracker/current-feature.md`.
 
 ## Open decisions (next session)
 
