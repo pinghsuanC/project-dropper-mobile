@@ -143,4 +143,6 @@ Check the server's `/docs` page when unsure; do not guess field names.
   `main` directly.
 - One commit per feature, made by `/current-feature complete`, with a plain-English subject
   under 60 characters.
+- No attribution in commits or PRs: no `Co-Authored-By` trailer, no "Generated with
+  Claude Code" line.
 - Changes reach `main` through a PR. Never force-push.

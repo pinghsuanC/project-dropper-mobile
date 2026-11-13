@@ -1,0 +1,1553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File Dropper Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime&family=Pixelify+Sans:wght@400;700&family=Silkscreen:wght@400;700&family=DotGothic16&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,700;1,400&family=Inter:ital,wght@0,400;0,700;1,400&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --face: #c0c0c0;
+    --desktop: #008080;
+    --title: #000080;
+    --white: #ffffff;
+    --black: #000000;
+    --shadow: #808080;
+    --text: #000000;
+    --muted: #444444;
+    --ok: #008000;
+    --frame: #222222;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }   /* hidden always wins over display rules like .btn's inline-flex */
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: #2b2b2b;
+    font-family: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif; /* message font (2020) */
+    font-size: 13px;
+    color: var(--text);
+    display: flex; justify-content: center; align-items: flex-start;
+    padding: 16px;
+  }
+
+  /* ---- phone frame ---- */
+  .phone {
+    width: 390px; max-width: 100%;
+    height: 800px;
+    background: var(--desktop);
+    border: 6px solid var(--frame);
+    border-radius: 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .phone-scroll { height: 100%; overflow-y: auto; overflow-x: hidden; padding: 40px 12px 24px; }
+  .screen { display: none; flex-direction: column; gap: 14px; }
+
+  /* ---- dev-only floating shortcut (not part of the real UI) ---- */
+  .dev-fab {
+    position: absolute; right: 10px; bottom: 10px; z-index: 30;   /* above popups (error layer is 20) */
+    background: #ffff00; color: var(--black); font: inherit; font-size: 11px; font-weight: 700;
+    padding: 3px 8px; cursor: pointer; border-radius: 0;
+  }
+  .dev-fab:active { border-color: var(--black) var(--white) var(--white) var(--black); }
+  .dev-fab[hidden] { display: none; }
+
+  /* ---- taskbar with the Properties "Start" button ---- */
+  .taskbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 42px; z-index: 15;
+    background: var(--face); border-top: 2px solid var(--white); box-shadow: inset 0 1px 0 var(--face);
+    display: flex; align-items: center; padding: 0 6px;
+  }
+  .taskbar[hidden] { display: none; }
+  .start-btn { min-height: 32px; padding: 3px 10px; gap: 6px; font-weight: 700; }
+  .start-btn:active:not(:disabled) { padding: 4px 9px 2px 11px; }
+  /* leave room so the taskbar never covers the bottom of a screen */
+  .phone.has-taskbar .phone-scroll { padding-bottom: 66px; }
+  .phone.has-taskbar .dev-fab { bottom: 9px; }
+
+  /* ---- properties: Win98-style group boxes ---- */
+  .group { border: 1px solid var(--shadow); box-shadow: 1px 1px 0 var(--white), inset 1px 1px 0 var(--white); padding: 12px 10px 8px; position: relative; }
+  .group-label { position: absolute; top: -8px; left: 8px; padding: 0 4px; background: var(--face); font-size: 12px; }
+  /* every group uses the same fixed label column, so values line up from group to group */
+  .kv { display: grid; grid-template-columns: 72px 1fr; gap: 4px 10px; font-size: 12px; align-items: center; margin: 0; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; min-height: 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .kv .mono { font-family: "Courier Prime", "Courier New", monospace; }   /* Courier Prime: SIL OFL 1.1, free to bundle */
+  .group-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+  .storage-bar { height: 16px; padding: 2px; margin: 6px 0 4px; }
+  .storage-fill { height: 100%; background: repeating-linear-gradient(90deg, var(--title) 0 8px, transparent 8px 10px); }
+  /* "soon to come" group: greyed like disabled text, bar fill turns grey too */
+  .group.is-soon .group-row, .group.is-soon .group-label { color: var(--shadow); text-shadow: 1px 1px 0 var(--white); }
+  .group.is-soon .storage-bar { background: var(--face); }
+  .group.is-soon .storage-fill { background: repeating-linear-gradient(90deg, var(--shadow) 0 8px, transparent 8px 10px); }
+  .soon-row { display: flex; align-items: center; gap: 6px; }   /* a disabled button + its "Soon to come" tag */
+  .danger-btn { flex: 1; font-weight: 700; }
+  .soon-tag {
+    margin-left: 4px; padding: 0 4px; font-size: 10px; font-weight: 700; text-shadow: none;
+    background: #ffffe1; color: var(--black); border: 1px solid var(--black);   /* tooltip-yellow tag */
+  }
+
+  /* ---- error popup: centered on the phone, over the current screen ---- */
+  .error-layer {
+    position: absolute; inset: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .error-layer[hidden] { display: none; }
+  /* kind: error (red ✕, default) or info (blue i) */
+  .error-layer[data-kind="info"] .err-icon, .error-layer:not([data-kind="info"]) .info-icon { display: none; }
+  /* kind="loading": a wait popup. No icon, no buttons, ✕ disabled, a GIF instead of the icon */
+  .popup-wait-gif { width: 100%; height: 90px; }   /* the `loading` GIF slot */
+  .error-layer:not([data-kind="loading"]) .popup-wait-gif { display: none; }
+  .error-layer[data-kind="loading"] .error-icon,
+  .error-layer[data-kind="loading"] #errorButtons { display: none; }
+  .error-layer[data-kind="loading"] #errorClose { color: var(--shadow); text-shadow: 1px 1px 0 var(--white); pointer-events: none; }
+  .error-dialog { width: 100%; max-width: 300px; }
+  .error-body { align-items: center; text-align: center; gap: 12px; padding: 16px 14px 14px; }
+  .error-icon { flex: none; }
+  .error-msg { font-size: 13px; white-space: pre-line; }   /* \n in a message starts a new line */
+  /* code + details from the API: a small sunken box, only shown when given */
+  .error-details {
+    display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; margin: 0; width: 100%;
+    padding: 6px 8px; text-align: left; font-size: 12px; background: var(--white);
+    border: 2px solid; border-color: var(--black) var(--white) var(--white) var(--black);
+  }
+  .error-details dt { color: var(--muted); }
+  .error-details dd { margin: 0; font-family: "Courier Prime", "Courier New", monospace; word-break: break-word; }
+  .error-details dt:has(+ dd:empty), .error-details dd:empty { display: none; }   /* a missing code or detail hides its own row */
+  .error-heading { font-size: 15px; font-weight: 700; margin-bottom: -6px; }  /* sits right above its message */
+  /* maroon banner pinned to the top of the dev screen marks it as not-real UI */
+  #dev { margin-top: -40px; }                      /* banner sits flush with the top of the phone */
+  .dev-banner {
+    position: sticky; top: -40px; z-index: 5;      /* -40px = cancel the scroll area's top padding */
+    margin: 0 -12px 4px; padding: 10px 12px;
+    background: #800000; color: var(--white);
+    font-weight: 700; font-size: 15px; letter-spacing: .2em; text-align: center;
+    border-bottom: 2px solid var(--black);
+  }
+  #dev .window-body { padding: 12px; }
+  .dev-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .dev-list .btn { justify-content: flex-start; min-height: 72px; padding: 0 12px; font-size: 15px; font-weight: 700; text-align: left; }
+  .dev-list .btn:active { padding: 2px 10px 0 14px; }
+  /* a button left alone on its row takes the full width */
+  .dev-list .btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .dev-note { font-size: 11px; color: var(--white); text-align: center; }
+
+  /* ---- landing: terminal ---- */
+  /* stretch over the uneven top padding (40 vs 24px) so the window centers on the real screen */
+  #landing, .landing-like { height: calc(100% + 16px); margin-top: -16px; justify-content: center; }
+  /* success / failed: the terminal stays behind, a terminal-wide (but short) window pops up
+     knocked off-center so part of it hangs off the screen (the phone clips it) */
+  /* cover the whole phone (cancel the scroll padding) and clip there, so the
+     overhang is cut by the phone's edge and can't be scrolled into view */
+  #landing-success, #landing-failed, #landing-unreachable {
+    position: relative; overflow: hidden;
+    height: calc(100% + 64px); margin: -40px -12px -24px; padding: 24px 12px;
+  }
+  .popup {
+    position: absolute; left: 12px; top: 50%;
+    width: calc(100% - 24px);                       /* as wide as the terminal; height fits the content */
+    z-index: 2;
+  }
+  /* GIF + message centered in the part of the window that's still on screen:
+     the right padding = normal 12px + how far the window hangs off the right edge */
+  .popup-body { align-items: center; text-align: center; }
+  #landing-success .popup-body { padding-right: calc(12px + 101px); }
+  #landing-failed .popup-body { padding-right: calc(12px + 16px); }
+  #landing-unreachable .popup-body { padding-right: calc(12px + 52px); }
+  .popup-gif { width: 85%; height: 90px; }
+  .popup-msg { font-size: 13px; padding-bottom: 4px; }
+  /* top edges stay where they were; only the windows got shorter */
+  /* success: hangs off the right edge */
+  #landing-success .popup { transform: translate(32%, -122px); }
+  /* failed: lower and a little right, short enough that the text stays on screen */
+  #landing-failed .popup { transform: translate(8%, 57px); }
+  /* unreachable: knocked up and to the right; less overhang than success so Retry stays easy to hit */
+  #landing-unreachable .popup { transform: translate(18%, -60px); }
+  .term-window { height: 55%; display: flex; flex-direction: column; }
+  .term {
+    flex: 1; margin: 2px; padding: 10px;
+    background: var(--black); color: var(--term-text);
+    font-family: "VT323", "Courier New", monospace; font-size: 20px; line-height: 1.2;
+    white-space: pre-wrap; word-break: break-word;
+    border: 2px solid; border-color: var(--shadow) var(--white) var(--white) var(--shadow);
+  }
+  .cursor { display: inline-block; width: .6em; height: 1em; background: var(--term-text); vertical-align: -2px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  :root { --term-text: #c0c0c0; }
+
+  /* ---- home variants: #home gets .unpaired on /home-unpaired ---- */
+  #home.unpaired .paired-only, #home:not(.unpaired) .unpaired-only { display: none; }
+  /* paired + server check failed: Retry and a red message replace Check server and "You are connected." */
+  #home.server-error .ok-only, #home:not(.server-error) .error-only { display: none; }
+  .gif-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; } /* room for the bubble tail */
+  #home .home-push { margin-top: 0; }  /* both home variants: the GIF row already pushes the window down */
+  /* chrome font (2020-typography): Silkscreen on every title bar and button; messages use the body font */
+  /* `button.btn` (not `.btn`) so it beats the later `.btn { font: inherit }` rule */
+  .titlebar, button.btn { font-family: "Silkscreen", "Segoe UI", system-ui, sans-serif; letter-spacing: -0.08em; }
+
+  /* ---- indeterminate loading bar (blocks slide across) ---- */
+  .loading { height: 22px; padding: 2px; overflow: hidden; position: relative; }
+  .loading-blocks {
+    position: absolute; top: 2px; bottom: 2px; width: 40%;
+    background: repeating-linear-gradient(90deg, var(--title) 0 10px, transparent 10px 12px);
+    animation: slide 1.6s steps(24) infinite;
+  }
+  @keyframes slide { from { left: -40%; } to { left: 100%; } }
+
+  /* ---- register ---- */
+  .field-label { font-size: 12px; margin-bottom: 4px; }
+  .textfield { display: block; padding: 6px 8px; }
+  .textfield input { border: 0; outline: 0; font: inherit; width: 100%; background: transparent; }
+  .reg-status { min-height: 18px; text-align: center; font-weight: 700; }
+  .field-hint { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; font-size: 11px; color: var(--muted); }
+  .fine-print { font-size: 11px; color: var(--muted); }
+  .center-text { text-align: center; }   /* short status lines under a control */
+  /* camera viewfinder: black live view with a white aiming frame */
+  .viewfinder.sunken { position: relative; height: 300px; background: var(--black); display: flex; align-items: center; justify-content: center; }
+  .vf-frame { position: relative; width: 190px; height: 190px; }
+  .vf-c { position: absolute; width: 28px; height: 28px; border: 0 solid var(--white); }
+  .vf-c.tl { top: 0; left: 0; border-top-width: 4px; border-left-width: 4px; }
+  .vf-c.tr { top: 0; right: 0; border-top-width: 4px; border-right-width: 4px; }
+  .vf-c.bl { bottom: 0; left: 0; border-bottom-width: 4px; border-left-width: 4px; }
+  .vf-c.br { bottom: 0; right: 0; border-bottom-width: 4px; border-right-width: 4px; }
+  .vf-label { position: absolute; bottom: 8px; left: 10px; color: var(--shadow); font-size: 11px; letter-spacing: .2em; }
+  /* pairing screens sit lower so the buttons are within thumb reach */
+  #pairing-1, #pairing-2 { padding-top: 100px; }
+  .warning { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
+  .warning svg { flex: none; }  .screen.active { display: flex; }
+
+  /* ---- bevels ---- */
+  .raised {
+    border-style: solid; border-width: 2px;
+    border-color: var(--white) var(--black) var(--black) var(--white);
+    box-shadow: inset -1px -1px 0 var(--shadow);
+  }
+  .sunken {
+    border-style: solid; border-width: 2px;
+    border-color: var(--black) var(--white) var(--white) var(--black);
+    background: var(--white);
+  }
+
+  /* ---- Window ---- */
+  .window { background: var(--face); padding: 2px; }
+  .titlebar {
+    background: var(--title); color: var(--white);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 4px 4px 8px; font-weight: 700; font-size: 13px;
+  }
+  .tb-buttons { display: flex; gap: 2px; }
+  .tb-btn {
+    width: 18px; height: 16px; background: var(--face);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; line-height: 1; color: var(--black); font-weight: 700;
+    cursor: default; user-select: none;
+  }
+  .tb-btn:active { border-color: var(--black) var(--white) var(--white) var(--black); }
+  /* screens whose title-bar buttons are disabled (greyed glyph, no press) */
+  #home .tb-btn, #landing-success .tb-btn, #landing-failed .tb-btn, #landing-unreachable .tb-btn, #pairing-2 .tb-btn { color: var(--shadow); text-shadow: 1px 1px 0 var(--white); pointer-events: none; }
+  .window-body { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* ---- Button ---- */
+  .btn {
+    background: var(--face); font: inherit; color: var(--text);
+    padding: 6px 14px; border-radius: 0; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 34px;
+  }
+  .btn:active:not(:disabled) {
+    border-color: var(--black) var(--white) var(--white) var(--black);
+    box-shadow: inset 1px 1px 0 var(--shadow);
+    padding: 7px 13px 5px 15px;
+  }
+  .btn:disabled { color: var(--shadow); text-shadow: 1px 1px 0 var(--white); cursor: default; }
+  .btn:focus-visible { outline: 1px dotted var(--black); outline-offset: -5px; }
+
+  .btn-big { flex-direction: column; gap: 4px; padding: 10px 20px; min-width: 170px; font-size: 15px; align-self: center; }
+  /* pressed: shift content 1px down-right without changing the button's size */
+  .btn-big:active:not(:disabled) { padding: 11px 19px 9px 21px; }
+
+  /* ---- misc pieces ---- */
+  .date { font-size: 13px; }
+  /* ---- speech bubble (old-school balloon tip: pale yellow, black outline, pixel-stepped corners) ---- */
+  .bubble-wrap { position: relative; margin: 0 6px 6px; }
+  .bubble {
+    background: var(--black); padding: 2px;           /* the 2px black outline */
+    clip-path: var(--pixel-corners);
+  }
+  .bubble-inner {
+    background: var(--tooltip); padding: 8px 12px;
+    clip-path: var(--pixel-corners);
+  }
+  :root {
+    --tooltip: #ffffe1;
+    --pixel-corners: polygon(
+      0 6px, 2px 6px, 2px 4px, 4px 4px, 4px 2px, 6px 2px, 6px 0,
+      calc(100% - 6px) 0, calc(100% - 6px) 2px, calc(100% - 4px) 2px, calc(100% - 4px) 4px, calc(100% - 2px) 4px, calc(100% - 2px) 6px, 100% 6px,
+      100% calc(100% - 6px), calc(100% - 2px) calc(100% - 6px), calc(100% - 2px) calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) calc(100% - 2px), calc(100% - 6px) calc(100% - 2px), calc(100% - 6px) 100%,
+      6px 100%, 6px calc(100% - 2px), 4px calc(100% - 2px), 4px calc(100% - 4px), 2px calc(100% - 4px), 2px calc(100% - 6px), 0 calc(100% - 6px)
+    );
+  }
+  /* tail: black right triangle with a yellow one inset, pointing down at the window */
+  .bubble-tail {
+    position: absolute; left: 28px; bottom: -16px;
+    width: 0; height: 0;
+    border-top: 18px solid var(--black); border-right: 18px solid transparent;
+  }
+  .bubble-tail::after {
+    content: ""; position: absolute; left: 2px; top: -20px;
+    width: 0; height: 0;
+    border-top: 14px solid var(--tooltip); border-right: 14px solid transparent;
+  }
+  .quote-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--muted); }
+  .quote-text { font-style: italic; font-size: 12px; margin-top: 2px; }
+  .gif {
+    background: var(--black); color: var(--white);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; letter-spacing: .4em; font-size: 18px;
+    border: 2px solid; border-color: var(--shadow) var(--white) var(--white) var(--shadow);
+  }
+  .gif-sm { height: 80px; }
+  .gif-lg { height: 160px; }
+  .status-ok { color: var(--ok); font-weight: 700; text-align: center; min-height: 18px; }
+  .status-bad { color: #a00000; }
+  .status-ok.is-checking { color: var(--muted); }
+
+  .search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; }
+  .search input {
+    border: 0; outline: 0; font: inherit; flex: 1; background: transparent; min-width: 0;
+  }
+  .listbox { height: 180px; overflow-y: auto; padding: 4px 6px; }
+  .listbox.tall { height: 190px; }
+  .listbox .empty { padding: 2px; }
+  .listbox .row { padding: 2px 4px; display: flex; justify-content: space-between; gap: 8px; cursor: default; }
+  .listbox .row.sel { background: var(--title); color: var(--white); }
+  .listbox .row { align-items: center; padding: 4px; }
+  .listbox .row .name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; }
+  .listbox .row .size { color: inherit; opacity: .7; white-space: nowrap; }
+
+  /* ---- upload states (data-mode on #upload-screen: sending / partial / toolarge / success) ---- */
+  #upload-screen:not([data-mode="sending"]) .sending-only { display: none; }
+  #upload-screen[data-mode="sending"] .search { display: none; }   /* the sending GIF takes its place */
+  #upload-screen .sending-only { height: 56px; }
+  #upload-screen > .gif-lg { height: 90px; }   /* short so every upload state fits above the taskbar */
+  #upload-screen #clearAll { margin-right: auto; }   /* Clear all sits at the left, away from Add... and Upload */
+  #upload-screen #queue { height: 160px; }           /* 20px shorter: room for the 3-line Back note */
+  /* upload – single: one shared file, so the list is just one row tall */
+  .listbox.single-file { height: auto; }   /* shorter top GIF so every upload state fits without scrolling */
+  #upload-screen:not([data-mode="partial"]) #retryFailed { display: none; }
+  #upload-screen[data-mode="partial"] #upload { display: none; }
+  /* partial failed: Retry failed is the only action, so Clear all and Add... are hidden */
+  #upload-screen[data-mode="partial"] #clearAll,
+  #upload-screen[data-mode="partial"] #choose { display: none; }
+  .upload-msg { font-weight: 700; text-align: center; }
+  .upload-msg:empty { display: none; }   /* only shows when a state has something to say */
+  .upload-msg.ok { color: var(--ok); }
+  .upload-msg.bad { color: #a00000; }
+  .listbox .row .state { min-width: 74px; text-align: right; white-space: nowrap; font-size: 12px; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+  .state.sent { color: var(--ok); font-weight: 700; }
+  .state.failed, .state.toolarge { color: #a00000; font-weight: 700; }
+  .state.waiting { color: var(--muted); }
+  .mini-bar { width: 40px; height: 10px; padding: 1px; border: 1px solid; border-color: var(--shadow) var(--white) var(--white) var(--shadow); background: var(--white); }
+  .mini-bar > div { height: 100%; background: var(--title); }
+  .listbox .row.sel .state { color: inherit; }
+
+  /* ---- server file rows: name on top, size · date underneath ---- */
+  .listbox .row.two-line { flex-direction: column; align-items: stretch; gap: 1px; }
+  .listbox .row .meta { font-size: 11px; opacity: .7; }
+  .listbox .row .del {
+    border: 0; background: transparent; color: inherit; font: inherit; font-size: 14px;
+    width: 24px; height: 24px; padding: 0; cursor: pointer; line-height: 1;
+  }
+  .listbox .row .del:active { border: 1px solid; border-color: var(--black) var(--white) var(--white) var(--black); }
+
+  .actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .actions .btn { white-space: nowrap; padding-left: 10px; padding-right: 10px; }
+  .actions .btn:active:not(:disabled) { padding: 7px 9px 5px 11px; }
+  .center { display: flex; justify-content: center; }
+  .center.gap { gap: 12px; }
+  .push-down { margin-top: 16px; }
+  .home-push { margin-top: 28px; }
+  .bubble-greeting { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+  .btn-wide { min-width: 90px; }
+  .prompt { font-size: 13px; padding: 4px 0; }
+
+  .progress { height: 18px; padding: 2px; display: none; }
+  .progress.show { display: block; }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: repeating-linear-gradient(90deg, var(--title) 0 8px, transparent 8px 10px);
+  }
+
+  .statusbar {
+    display: flex; justify-content: flex-end; align-items: center; gap: 8px;
+    padding: 3px 8px; font-size: 12px;
+    border: 1px solid; border-color: var(--shadow) var(--white) var(--white) var(--shadow);
+  }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); margin-left: 3px; vertical-align: middle; }
+  .dot.off { background: #a00000; }
+  .sep { color: var(--muted); }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<div class="phone">
+<button class="dev-fab raised" id="devFab" aria-label="Open dev menu">DEV</button>
+
+<!-- ================= ERROR POPUP — reusable, sits over whatever screen is open ================= -->
+<div class="error-layer" id="errorLayer" hidden>
+  <div class="window raised error-dialog" role="alertdialog" aria-labelledby="errorTitle" aria-describedby="errorMsg">
+    <div class="titlebar">
+      <span id="errorTitle">Error</span>
+      <div class="tb-buttons">
+        <span class="tb-btn raised" id="errorClose">✕</span>
+      </div>
+    </div>
+    <div class="window-body error-body">
+      <svg class="error-icon info-icon" width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
+        <circle cx="18" cy="18" r="16" fill="#000080" stroke="#000000" stroke-width="2"/>
+        <rect x="16" y="15" width="4" height="12" fill="#ffffff"/><rect x="16" y="8" width="4" height="4" fill="#ffffff"/>
+      </svg>
+      <svg class="error-icon err-icon" width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
+        <circle cx="18" cy="18" r="16" fill="#ff0000" stroke="#800000" stroke-width="2"/>
+        <path d="M12 12 L24 24 M24 12 L12 24" stroke="#ffffff" stroke-width="3.5" stroke-linecap="square"/>
+      </svg>
+      <div class="error-heading" id="errorHeading">Error</div>
+      <div class="error-msg" id="errorMsg"></div>
+      <div class="gif popup-wait-gif" aria-label="Loading">GIF</div>
+      <dl class="error-details" id="errorDetails" hidden>
+        <dt>Code</dt><dd id="errorCode"></dd>
+        <dt>Details</dt><dd id="errorDetail"></dd>
+      </dl>
+      <div class="center gap" id="errorButtons">
+        <button class="btn raised btn-wide" id="errorOk">OK</button>
+        <button class="btn raised btn-wide" id="errorCancel" hidden>Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- taskbar: Start-style Properties button, bottom-left (paired Home, Server, Upload) -->
+<div class="taskbar" id="taskbar" hidden>
+  <button class="btn raised start-btn" id="propsBtn">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <g fill="currentColor"><rect x="7" y="0" width="2" height="4"/><rect x="7" y="12" width="2" height="4"/><rect x="0" y="7" width="4" height="2"/><rect x="12" y="7" width="4" height="2"/>
+      <rect x="7" y="0" width="2" height="4" transform="rotate(45 8 8)"/><rect x="7" y="12" width="2" height="4" transform="rotate(45 8 8)"/><rect x="0" y="7" width="4" height="2" transform="rotate(45 8 8)"/><rect x="12" y="7" width="4" height="2" transform="rotate(45 8 8)"/></g>
+      <circle cx="8" cy="8" r="4.5" fill="currentColor"/><circle cx="8" cy="8" r="2" fill="var(--face)"/>
+    </svg>
+    Properties
+  </button>
+</div>
+<div class="phone-scroll">
+
+  <!-- ================= DEV ONLY (/dev) — prototype navigation, not shipped ================= -->
+  <section class="screen" id="dev">
+    <div class="dev-banner" role="banner">DEV ONLY</div>
+    <div class="window raised">
+      <div class="titlebar">
+        <span>Landing</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="dev-list">
+          <button class="btn raised" data-go="/landing">Landing</button>
+          <button class="btn raised" data-go="/landing-success">Success</button>
+          <button class="btn raised" data-go="/landing-failed">Failed</button>
+          <button class="btn raised" data-go="/landing-unreachable">Server unreachable</button>
+        </div>
+      </div>
+    </div>
+    <div class="window raised">
+      <div class="titlebar">
+        <span>Register</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="dev-list">
+          <button class="btn raised" data-go="/register">Register</button>
+          <button class="btn raised" data-go="/register-error-server">Error – server unreachable</button>
+          <button class="btn raised" data-go="/register-error-api">Error – server error</button>
+        </div>
+      </div>
+    </div>
+    <div class="window raised">
+      <div class="titlebar">
+        <span>Home</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="dev-list">
+          <button class="btn raised" data-go="/home-unpaired">Unpaired</button>
+          <button class="btn raised" data-go="/home-paired">Paired</button>
+          <button class="btn raised" data-go="/home-paired-error">Paired – server error</button>
+        </div>
+      </div>
+    </div>
+    <div class="window raised">
+      <div class="titlebar">
+        <span>Pairing</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="dev-list">
+          <button class="btn raised" data-go="/pairing-1">Step 1 – scan</button>
+          <button class="btn raised" data-go="/pairing-2">Step 2 – wait</button>
+          <button class="btn raised" data-go="/pairing-1-permission">Step 1 – camera note</button>
+          <button class="btn raised" data-go="/pairing-camera">Step 1 – camera</button>
+          <button class="btn raised" data-go="/pairing-1-error">Step 1 – error</button>
+          <button class="btn raised" data-go="/pairing-2-error">Step 2 – error</button>
+        </div>
+      </div>
+    </div>
+    <div class="window raised">
+      <div class="titlebar">
+        <span>Server</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="dev-list">
+          <button class="btn raised" data-go="/server-empty">Server status – empty</button>
+          <button class="btn raised" data-go="/server-files">Server status – files</button>
+        </div>
+      </div>
+    </div>
+    <div class="window raised">
+      <div class="titlebar">
+        <span>Upload</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="dev-list">
+          <button class="btn raised" data-go="/upload-start">Upload – start</button>
+          <button class="btn raised" data-go="/upload-in-progress">Upload – in progress</button>
+          <button class="btn raised" data-go="/upload-partial-failed">Upload – partial failed</button>
+          <button class="btn raised" data-go="/upload-file-too-large">Upload – file too large</button>
+          <button class="btn raised" data-go="/upload-success">Upload – success</button>
+        </div>
+      </div>
+    </div>
+    <div class="window raised">
+      <div class="titlebar">
+        <span>Sharing</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="dev-list">
+          <button class="btn raised" data-go="/shared-file">Shared file to PC</button>
+          <button class="btn raised" data-go="/shared-file-loading">Shared file – loading</button>
+          <button class="btn raised" data-go="/shared-file-error">Shared file – error</button>
+        </div>
+      </div>
+    </div>
+    <div class="window raised">
+      <div class="titlebar">
+        <span>Device &amp; User</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="dev-list">
+          <button class="btn raised" data-go="/properties">Properties</button>
+          <button class="btn raised" data-go="/properties-unpaired">Properties – not paired</button>
+        </div>
+      </div>
+    </div>
+    <div class="dev-note">Tap the yellow DEV button on any screen to come back here.</div>
+  </section>
+
+  <!-- ================= LANDING (/landing) — terminal look, checks registration ================= -->
+  <section class="screen" id="landing">
+    <div class="window raised term-window">
+      <div class="titlebar">
+        <span>DROPPER.EXE</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="term" id="term">Trying to connect ...
+<span class="cursor"></span></div>
+    </div>
+  </section>
+
+  <!-- ================= LANDING SUCCESS (/landing-success) — found device + auth OK → home ================= -->
+  <section class="screen landing-like" id="landing-success">
+    <div class="window raised term-window">
+      <div class="titlebar">
+        <span>DROPPER.EXE</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="term">Trying to connect ...
+<span class="cursor"></span></div>
+    </div>
+    <!-- normal window popping up over the terminal -->
+    <div class="window raised popup" role="dialog" aria-label="Welcome back">
+      <div class="titlebar">
+        <span>Welcome back</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body popup-body">
+        <div class="gif popup-gif">GIF</div>
+        <div class="popup-msg" id="welcomeMsg">Welcome back My Android phone, redirecting..</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= LANDING FAILED (/landing-failed) — re-register or auth error → register ================= -->
+  <section class="screen landing-like" id="landing-failed">
+    <div class="window raised term-window">
+      <div class="titlebar">
+        <span>DROPPER.EXE</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="term">Trying to connect ...
+<span class="cursor"></span></div>
+    </div>
+    <!-- normal window popping up over the terminal -->
+    <div class="window raised popup" role="dialog" aria-label="Not registered">
+      <div class="titlebar">
+        <span>Not registered</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body popup-body">
+        <div class="gif popup-gif">GIF</div>
+        <div class="popup-msg">You are not welcomed yet. Redirecting you to register...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= LANDING UNREACHABLE (/landing-unreachable) — server didn't answer → Retry ================= -->
+  <section class="screen landing-like" id="landing-unreachable">
+    <div class="window raised term-window">
+      <div class="titlebar">
+        <span>DROPPER.EXE</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="term">Trying to connect ...
+<span class="cursor"></span></div>
+    </div>
+    <div class="window raised popup" role="dialog" aria-label="Server unreachable">
+      <div class="titlebar">
+        <span>Server unreachable</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body popup-body">
+        <div class="gif popup-gif">GIF</div>
+        <div class="popup-msg">Can't reach your server. Make sure it's running, then retry.</div>
+        <button class="btn raised btn-wide" id="landingRetry">Retry</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PAIRING STEP 1 (/pairing-1) — scan the PC's QR ================= -->
+  <section class="screen" id="pairing-1">
+    <div class="bubble-wrap" role="note">
+      <div class="bubble">
+        <div class="bubble-inner">
+          <div class="bubble-greeting">Let's pair!</div>
+          <div class="quote-text">Please run the program on your computer. A QR code should appear for this phone.</div>
+        </div>
+      </div>
+      <div class="bubble-tail" aria-hidden="true"></div>
+    </div>
+    <div class="window raised home-push">
+      <div class="titlebar">
+        <span>Pair with your PC — Step 1 of 2</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised" id="pair1Close">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="warning" role="note">
+          <svg width="20" height="18" viewBox="0 0 20 18" aria-hidden="true">
+            <path d="M10 1 L19 17 H1 Z" fill="#ffff00" stroke="#000000" stroke-width="1.5" stroke-linejoin="miter"/>
+            <rect x="9" y="6" width="2" height="6" fill="#000000"/><rect x="9" y="13.5" width="2" height="2" fill="#000000"/>
+          </svg>
+          <span>Don't share the QR code with anyone.</span>
+        </div>
+        <div class="warning" role="note">
+          <svg width="20" height="18" viewBox="0 0 20 18" aria-hidden="true">
+            <path d="M10 1 L19 17 H1 Z" fill="#ffff00" stroke="#000000" stroke-width="1.5" stroke-linejoin="miter"/>
+            <rect x="9" y="6" width="2" height="6" fill="#000000"/><rect x="9" y="13.5" width="2" height="2" fill="#000000"/>
+          </svg>
+          <span>The QR code is only valid for 60s.</span>
+        </div>
+        <div class="prompt">Scan the QR code on your PC</div>
+        <button class="btn btn-big raised" id="openCamera">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+            <path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/>
+          </svg>
+          Open camera
+        </button>
+        <div class="fine-print">The connection is done between device fingerprints, a factory reset of your phone will need a re-pairing.</div>
+        <div class="fine-print">Currently you can only connect with 1 PC.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PAIRING CAMERA (/pairing-camera) — live viewfinder looking for the PC's QR ================= -->
+  <section class="screen" id="pairing-camera">
+    <div class="window raised">
+      <div class="titlebar">
+        <span>Scan QR code</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised" id="camClose">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="prompt">Point the camera at the QR code on your PC.</div>
+        <div class="viewfinder sunken" aria-label="Camera view">
+          <div class="vf-frame"><span class="vf-c tl"></span><span class="vf-c tr"></span><span class="vf-c bl"></span><span class="vf-c br"></span></div>
+          <div class="vf-label">CAMERA</div>
+        </div>
+        <div class="loading sunken" role="progressbar" aria-label="Looking for a QR code"><div class="loading-blocks"></div></div>
+        <div class="fine-print center-text" id="camStatus">Looking for a QR code…</div>
+        <div class="center"><button class="btn raised btn-wide" id="camCancel">Cancel</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PAIRING STEP 2 (/pairing-2) — waiting for the server ================= -->
+  <section class="screen" id="pairing-2">
+    <div class="bubble-wrap" role="note">
+      <div class="bubble">
+        <div class="bubble-inner">
+          <div class="bubble-greeting">Almost there…</div>
+          <div class="quote-text">Your PC is checking the code. This only takes a moment.</div>
+        </div>
+      </div>
+      <div class="bubble-tail" aria-hidden="true"></div>
+    </div>
+    <div class="window raised home-push">
+      <div class="titlebar">
+        <span>Pair with your PC — Step 2 of 2</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="prompt">Waiting for the server to respond…</div>
+        <div class="loading sunken" role="progressbar" aria-label="Pairing"><div class="loading-blocks"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= REGISTER (/register) — first launch ================= -->
+  <section class="screen" id="register">
+    <div class="gif gif-lg">GIF</div>
+    <div class="window raised push-down">
+      <div class="titlebar">
+        <span>Welcome to File Dropper</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div>This phone isn't registered yet. Tell us your name, and give this phone a name so your desktop can recognize it.</div>
+        <div>
+          <div class="field-label">Your name</div>
+          <label class="textfield sunken">
+            <input id="userName" placeholder="e.g. Alex" aria-label="Your name" aria-describedby="userHint">
+          </label>
+          <div class="field-hint" id="userHint">
+            <span>What the app calls you.</span>
+            <span id="userCount">0/20</span>
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Device name</div>
+          <label class="textfield sunken">
+            <input id="deviceName" value="My Android phone" aria-label="Device name" aria-describedby="nameHint">
+          </label>
+          <div class="field-hint" id="nameHint">
+            <span>Letters, numbers, spaces, - and _ only.</span>
+            <span id="nameCount">16/20</span>
+          </div>
+        </div>
+        <div class="center">
+          <button class="btn raised btn-big" id="registerBtn">Register this phone</button>
+        </div>
+        <div class="reg-status" id="regStatus"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= HOME ================= -->
+  <section class="screen" id="home">
+    <div class="bubble-wrap" role="note" aria-label="Quote of the day">
+      <div class="bubble">
+        <div class="bubble-inner">
+          <div class="bubble-greeting" id="greeting">Good afternoon</div>
+          <div class="quote-label">QUOTE OF THE DAY</div>
+          <div class="quote-text">First, solve the problem. Then, write the code.</div>
+        </div>
+      </div>
+      <div class="bubble-tail" aria-hidden="true"></div>
+    </div>
+    <div class="gif-pair">
+      <div class="gif gif-sm">GIF</div>
+      <div class="gif gif-sm">GIF</div>
+    </div>
+    <div class="window raised home-push">
+      <div class="titlebar">
+        <span class="paired-only ok-only">Connected to your server</span>
+        <span class="paired-only error-only">Can't reach your server</span>
+        <span class="unpaired-only">Not connected to a PC</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="date" id="date">Thursday, Nov 12</div>
+        <div class="gif gif-sm">GIF</div>
+        <button class="btn btn-big raised paired-only error-only" id="retryServer">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+            <path d="M19 12a7 7 0 1 1-2.05-4.95"/><path d="M19 4v4h-4"/>
+          </svg>
+          Retry
+        </button>
+        <button class="btn btn-big raised paired-only ok-only" id="checkServer">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+            <circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/>
+          </svg>
+          <span id="checkLabel">View server files</span>
+        </button>
+        <button class="btn btn-big raised unpaired-only" id="connectPc">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+            <rect x="3" y="4" width="18" height="12"/><path d="M8 20h8M12 16v4"/>
+          </svg>
+          I want to connect to my PC
+        </button>
+        <div class="status-ok paired-only ok-only" id="connMsg" role="status">Server connected</div>
+        <div class="status-ok status-bad paired-only error-only" role="alert">Server error, please check your server and retry.</div>
+      </div>
+    </div>
+
+    <div class="window raised paired-only">
+      <div class="titlebar">
+        <span>Upload</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="prompt">Do you want to upload?</div>
+        <div class="center gap">
+          <button class="btn raised btn-wide" id="yes">Yes</button>
+          <button class="btn raised btn-wide" id="no" disabled>No</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= UPLOAD (/upload) ================= -->
+  <section class="screen" id="upload-screen">
+    <div class="gif gif-lg">GIF</div>
+    <div class="window raised push-down">
+      <div class="titlebar">
+        <span>Pending upload</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised" id="uploadClose">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="gif gif-sm sending-only" aria-label="Sending animation">GIF</div>
+        <label class="search sunken">
+          <span aria-hidden="true">🔍</span>
+          <input id="homeSearch" placeholder="Search files" aria-label="Search files">
+        </label>
+        <div class="listbox sunken" id="queue" role="listbox" aria-label="Upload queue"></div>
+        <div class="upload-msg" id="uploadMsg" role="status"></div>
+        <div class="progress sunken" id="progress"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="actions">
+          <button class="btn raised" id="clearAll" disabled>Clear all</button>
+          <button class="btn raised" id="choose">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 7h6l2 2h10v10H3z"/><path d="M3 11h18"/>
+            </svg>
+            Add...
+          </button>
+          <button class="btn raised" id="upload" disabled>Upload</button>
+          <button class="btn raised" id="retryFailed">Retry failed</button>
+          <input type="file" id="filePicker" multiple hidden>
+        </div>
+        <div class="statusbar">
+          <span id="sbConn">Connected<span class="dot"></span></span><span class="sep">|</span>
+          <span id="sbCount">0 files</span><span class="sep">|</span>
+          <span id="sbTime">4:30 PM</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="window raised">
+      <div class="titlebar">
+        <span>Back</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised" id="backClose">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="prompt">Back to home screen?</div>
+        <div class="fine-print">Only In-progress items will be preserved. Failed items will be automatically removed once leaving this screen. Please check the files uploaded on the server page.</div>
+        <div class="center gap">
+          <button class="btn raised btn-wide" id="backConfirm">Confirm</button>
+          <button class="btn raised btn-wide" id="backCancel" disabled>Cancel</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SHARED FILE TO PC (/shared-file) — opened from Android's Share menu ================= -->
+  <section class="screen" id="shared-file">
+    <div class="gif gif-lg">GIF</div>
+    <div class="window raised push-down">
+      <div class="titlebar">
+        <span>Send to your PC</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised" id="singleClose">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="prompt">Shared from another app:</div>
+        <div class="listbox sunken single-file" role="listbox" aria-label="Shared file">
+          <div class="row" role="option">
+            <span class="name" id="singleName"></span>
+            <span class="size" id="singleSize"></span>
+          </div>
+        </div>
+        <div class="progress sunken" id="singleProgress"><div class="progress-fill" id="singleFill"></div></div>
+        <div class="upload-msg ok" id="singleMsg" role="status"></div>
+        <div class="actions">
+          <button class="btn raised btn-wide" id="singleCancel">Cancel</button>
+          <button class="btn raised btn-wide" id="singleUpload">Upload</button>
+        </div>
+        <div class="statusbar">
+          <span>Connected<span class="dot"></span></span><span class="sep">|</span>
+          <span>1 file</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PROPERTIES (/properties) — read-only device & user info, only once paired ================= -->
+  <section class="screen" id="properties">
+    <div class="window raised">
+      <div class="titlebar">
+        <span>Properties</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised" id="propsClose">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <div class="group">
+          <span class="group-label">You</span>
+          <dl class="kv"><dt>Name</dt><dd id="setUser">friend</dd></dl>
+        </div>
+        <div class="group">
+          <span class="group-label">This phone</span>
+          <dl class="kv">
+            <dt>Name</dt><dd id="setName">My Android phone</dd>
+            <dt>Device ID</dt><dd class="mono" id="setDeviceId"></dd>
+          </dl>
+        </div>
+        <div class="group">
+          <span class="group-label">Paired PC</span>
+          <dl class="kv">
+            <dt>Name</dt><dd><span id="setPc">DESKTOP-01</span><button class="btn raised" disabled>Unpair</button></dd>
+          </dl>
+        </div>
+        <div class="group">
+          <span class="group-label">Server</span>
+          <dl class="kv">
+            <dt>Address</dt><dd class="mono" id="setAddress">192.168.1.20:8000</dd>
+            <dt>Status</dt><dd id="setStatus"><span>Connected<span class="dot"></span></span></dd>
+          </dl>
+        </div>
+        <!-- storage: needs a server usage endpoint, so it's shown greyed out for now -->
+        <div class="group is-soon" aria-disabled="true">
+          <span class="group-label">Storage <span class="soon-tag">Soon to come</span></span>
+          <div class="storage-bar sunken" aria-hidden="true">
+            <div class="storage-fill" style="width: 41%"></div>
+          </div>
+          <div class="group-row"><span>12.4 GB of 30 GB used</span><span>41%</span></div>
+        </div>
+        <div class="group">
+          <span class="group-label">About</span>
+          <dl class="kv">
+            <dt>App</dt><dd>File Dropper</dd>
+            <dt>Version</dt><dd>0.1.0</dd>
+          </dl>
+        </div>
+        <!-- delete registry: un-register + wipe local key & device id. Not in the MVP, see README "Future features" -->
+        <div class="soon-row">
+          <button class="btn raised danger-btn" disabled>Delete registry from server</button>
+          <span class="soon-tag">Soon to come</span>
+        </div>
+        <div class="actions">
+          <button class="btn raised btn-wide" id="propsBack">Back</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SERVER STATUS ================= -->
+  <section class="screen" id="server">
+    <div class="gif gif-lg">GIF</div>
+    <div class="window raised">
+      <div class="titlebar">
+        <span>Server status</span>
+        <div class="tb-buttons">
+          <span class="tb-btn raised">_</span><span class="tb-btn raised">▫</span><span class="tb-btn raised" id="serverClose">✕</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <label class="search sunken">
+          <span aria-hidden="true">🔍</span>
+          <input id="serverSearch" placeholder="Search files" aria-label="Search files">
+        </label>
+        <div class="listbox tall sunken" id="serverList" role="listbox" aria-label="Files on server"></div>
+        <div class="center"><button class="btn raised" id="back" style="min-width:110px">Back</button></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</div>
+
+<script>
+  // ---------- strings (mirrors what would live in strings.ts) ----------
+  const S = {
+    greeting: h => h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening',
+    queueEmpty: 'Your upload queue is empty',
+    noMatch: q => `No files match "${q}"`,
+    serverEmpty: 'No files on server',
+    fileCount: n => n === 1 ? '1 file' : `${n} files`,
+    connected: 'You are connected.',
+    checking: 'Checking…',
+    remove: name => `Remove ${name} from queue`,
+    welcomeBack: name => `Welcome back ${name}, redirecting..`,
+    defaultDeviceName: 'My Android phone',
+    regNameRequired: 'Please enter a device name.',
+    regErrServer: "Couldn't reach your server, so this phone wasn't registered. Make sure the server is running, then try again.",
+    // server answered with an error: show what the API said (status code + detail from { "detail": ... })
+    regErrApi: "The server couldn't register this phone.",
+    cameraTitle: 'Camera',
+    cameraHeading: 'Camera access',
+    cameraNote: 'File Dropper uses the camera only to read the QR code on your PC. Android will ask for permission next.',
+    continueBtn: 'Continue',
+    notNow: 'Not now',
+    viewServerFiles: 'View server files',
+    serverConnected: 'Server connected',
+    regUserRequired: 'Please enter your name.',
+    notAvailable: 'N/A',
+    unknown: 'Unknown',
+    connectedLabel: 'Connected',
+    defaultUserName: 'friend',
+    greetUser: (greeting, name) => `${greeting}, ${name}`,
+    nameCount: (n, max) => `${n}/${max}`,
+    errorTitle: 'Error',
+    errorHeading: 'Error',
+    pairScanError: "Couldn't scan the QR code. Make sure camera access is allowed, then try again.",
+    pairServerError: 'Something went wrong on the server. Please scan the QR code again.',
+    ok: 'OK',
+    back: 'Back',
+    uploadBtn: 'Upload',
+    sendingBtn: 'Sending…',
+    sendingCount: (done, total) => `Sending ${done} of ${total}`,
+    partialSent: (sent, total) => `${sent} of ${total} sent. Please retry.`,
+    uploadTitle: 'Upload',
+    uploadDoneHeading: 'Upload complete',
+    allSent: n => n === 1 ? '1 file sent to your PC.' : `${n} files sent to your PC.`,
+    tooLarge: (name, size, max) => `${name} is too large (${size}). Files can be up to ${max}.`,
+    stSent: 'Sent ✓',
+    stFailed: 'Failed',
+    stWaiting: 'Waiting',
+    stTooLarge: 'Too large',
+    fileMeta: (size, when) => `${size} · ${when}`,
+    cancel: 'Cancel',
+    done: 'Done',
+    sharedAborted: 'Process Aborted',
+    loadingTitle: 'Please wait',
+    loadingHeading: 'Loading…',
+    sharedChecking: 'Checking that this phone is signed in and paired with your PC…',
+    sharedNotReady: "Can't send this file yet. This phone needs to be signed in and paired with your PC first.",
+    regKeys: 'Creating keys…',
+    regSending: 'Registering…',
+    regDone: 'Registered!',
+  };
+
+  const $ = id => document.getElementById(id);
+  let queue = [];        // File-like {name,size}
+  let serverFiles = [];  // files "uploaded" during this prototype session
+  let selected = null;
+
+  function fmtSize(b) {
+    const one = n => n.toFixed(1).replace(/\.0$/, '');   // 845.0 → 845, 2.3 stays 2.3
+    if (b < 1024) return b + ' B';
+    if (b < 1024 ** 2) return one(b / 1024) + ' KB';
+    if (b < 1024 ** 3) return one(b / 1024 ** 2) + ' MB';
+    return one(b / 1024 ** 3) + ' GB';
+  }
+
+  const MAX_NAME = 20; // would live in config.ts
+
+  // IDs on screen: first 5 + *** + last 3, never the full value
+  const MOCK_DEVICE_ID = '3f9a7e2b-41d0-4c8a-9e1f-6b2d8c21ec5a';
+  const maskId = id => id.slice(0, 5) + '***' + id.slice(-3);
+  const MOCK_PC_NAME = 'DESKTOP-01';
+  const MOCK_SERVER_ADDRESS = '192.168.1.20:8000';
+  const trimName = n => n.length > MAX_NAME ? n.slice(0, MAX_NAME) + '...' : n;
+
+  function renderList(el, items, query, emptyText, onDelete) {
+    el.innerHTML = '';
+    const q = query.trim().toLowerCase();
+    const shown = items.filter(f => f.name.toLowerCase().includes(q));
+    if (!items.length || !shown.length) {
+      const d = document.createElement('div');
+      d.className = 'empty';
+      d.textContent = items.length ? S.noMatch(query.trim()) : emptyText;
+      el.appendChild(d);
+      return;
+    }
+    shown.forEach(f => {
+      const r = document.createElement('div');
+      r.className = 'row' + (selected === f ? ' sel' : '');
+      r.setAttribute('role', 'option');
+      const n = document.createElement('span'); n.className = 'name'; n.textContent = trimName(f.name); n.title = f.name;
+      if (f.when) {
+        // server file: two lines, name on top and "size · date" underneath
+        r.classList.add('two-line');
+        const m = document.createElement('span'); m.className = 'meta'; m.textContent = S.fileMeta(fmtSize(f.size), f.when);
+        r.append(n, m);
+      } else {
+        const s = document.createElement('span'); s.className = 'size'; s.textContent = fmtSize(f.size);
+        r.append(n, s);
+      }
+      if (onDelete) {
+        const x = document.createElement('button');
+        x.className = 'del'; x.textContent = '✕';
+        x.setAttribute('aria-label', S.remove(f.name));
+        x.onclick = e => { e.stopPropagation(); onDelete(f); };
+        r.appendChild(x);
+      }
+      r.onclick = () => { selected = f; renderAll(); };
+      el.appendChild(r);
+    });
+  }
+
+  // ---------- mock data for the upload states and the server list ----------
+  const MB = 1024 * 1024;
+  const MAX_UPLOAD = 100 * MB;  // placeholder limit; would live in config.ts and match the server
+  const F = {
+    photo:  { name: 'holiday-photo.jpg', size: 2.3 * MB },
+    report: { name: 'report-final.pdf', size: 845 * 1024 },
+    rec:    { name: 'screen-recording.mp4', size: 48 * MB },
+    big:    { name: 'family-video.mov', size: 2.4 * 1024 * MB },
+  };
+  const UPLOAD_MOCKS = {
+    '/upload-in-progress': {
+      mode: 'sending',
+      rows: [{ ...F.photo, state: 'sent' }, { ...F.report, state: 'sending', pct: 45 }, { ...F.rec, state: 'waiting' }],
+      status: () => S.sendingCount(2, 3),
+    },
+    '/upload-partial-failed': {
+      mode: 'partial',
+      rows: [{ ...F.photo, state: 'sent' }, { ...F.report, state: 'sent' }, { ...F.rec, state: 'failed' }],
+    },
+    '/upload-file-too-large': {
+      mode: 'toolarge',
+      // the too-large file is refused before it joins the queue, so only the popup mentions it
+      rows: [{ ...F.photo, state: 'ready' }, { ...F.report, state: 'ready' }],
+    },
+    '/upload-success': {
+      mode: 'success',
+      rows: [{ ...F.photo, state: 'sent' }, { ...F.report, state: 'sent' }, { ...F.rec, state: 'sent' }],
+    },
+  };
+  const MOCK_SERVER_FILES = [
+    { ...F.photo, when: 'Today 4:12 PM' },
+    { ...F.report, when: 'Today 3:58 PM' },
+    { ...F.rec, when: 'Yesterday' },
+    { name: 'IMG_20261110_093512.jpg', size: 3.2 * MB, when: 'Nov 10' },
+    { name: 'notes.txt', size: 2150, when: 'Nov 9' },
+    { name: 'boarding-pass.pdf', size: 402 * 1024, when: 'Nov 3' },
+  ];
+
+  function stateCell(row) {
+    const c = document.createElement('span');
+    c.className = 'state ' + row.state;
+    if (row.state === 'sending') {
+      const bar = document.createElement('span'); bar.className = 'mini-bar';
+      const fill = document.createElement('div'); fill.style.width = row.pct + '%';
+      bar.appendChild(fill);
+      c.append(bar, document.createTextNode(row.pct + '%'));
+    } else {
+      c.textContent = { sent: S.stSent, failed: S.stFailed, waiting: S.stWaiting, toolarge: S.stTooLarge, ready: fmtSize(row.size) }[row.state];
+    }
+    return c;
+  }
+
+  function renderUploadMock(mock) {
+    const el = $('queue');
+    el.innerHTML = '';
+    // sent files leave the queue as soon as they're done; they live on the Server page now
+    const rows = mock.rows.filter(row => row.state !== 'sent');
+    if (!rows.length) {
+      const d = document.createElement('div'); d.className = 'empty'; d.textContent = S.queueEmpty;
+      el.appendChild(d);
+    }
+    rows.forEach(row => {
+      const r = document.createElement('div');
+      r.className = 'row'; r.setAttribute('role', 'option');
+      const n = document.createElement('span'); n.className = 'name'; n.textContent = trimName(row.name); n.title = row.name;
+      r.append(n);
+      if (row.state !== 'ready') { const s = document.createElement('span'); s.className = 'size'; s.textContent = fmtSize(row.size); r.append(s); }
+      r.append(stateCell(row));
+      el.appendChild(r);
+    });
+    const msg = $('uploadMsg');
+    msg.className = 'upload-msg' + (mock.tone ? ' ' + mock.tone : '');
+    msg.textContent = mock.msg ? mock.msg() : '';
+    const busy = mock.mode === 'sending';
+    $('clearAll').disabled = busy;
+    $('choose').disabled = busy;
+    $('upload').disabled = busy || mock.mode === 'success';
+    $('upload').textContent = busy ? S.sendingBtn : S.uploadBtn;
+    $('sbCount').textContent = mock.status ? mock.status() : S.fileCount(rows.length);
+  }
+
+  function renderAll() {
+    const mock = UPLOAD_MOCKS[currentPath];
+    $('upload-screen').dataset.mode = mock ? mock.mode : '';
+    if (mock) {
+      renderUploadMock(mock);
+    } else {
+      renderList($('queue'), queue, $('homeSearch').value, S.queueEmpty, f => {
+        queue = queue.filter(q => q !== f);
+        if (selected === f) selected = null;
+        renderAll();
+      });
+      $('uploadMsg').textContent = '';
+      $('upload').textContent = S.uploadBtn;
+      $('choose').disabled = false;
+      $('upload').disabled = queue.length === 0;
+      $('clearAll').disabled = queue.length === 0;
+      $('sbCount').textContent = S.fileCount(queue.length);
+    }
+    const files = currentPath === '/server-files' ? MOCK_SERVER_FILES : serverFiles;
+    renderList($('serverList'), files, $('serverSearch').value, S.serverEmpty);
+  }
+
+  function tick() {
+    const now = new Date();
+    $('greeting').textContent = S.greetUser(S.greeting(now.getHours()), userName());
+    $('date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    $('sbTime').textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  // ---------- tiny hash router (stands in for Expo Router files) ----------
+  // #/ -> src/app/index.tsx, #/server -> server.tsx, #/upload -> upload.tsx
+  const ROUTES = {
+    '/dev': 'dev', '/landing': 'landing', '/register': 'register',
+    '/landing-success': 'landing-success', '/landing-failed': 'landing-failed',
+    '/landing-unreachable': 'landing-unreachable',
+    '/register-error-server': 'register', '/register-error-api': 'register',
+    '/properties': 'properties', '/properties-unpaired': 'properties',
+    '/home-unpaired': 'home', '/home-paired': 'home', '/home-paired-error': 'home',
+    '/pairing-1': 'pairing-1', '/pairing-1-error': 'pairing-1',
+    '/pairing-2': 'pairing-2', '/pairing-2-error': 'pairing-2',
+    '/pairing-1-permission': 'pairing-1', '/pairing-camera': 'pairing-camera',
+    '/server-empty': 'server', '/server-files': 'server',
+    '/upload-start': 'upload-screen', '/upload-in-progress': 'upload-screen', '/upload-partial-failed': 'upload-screen',
+    '/upload-file-too-large': 'upload-screen', '/upload-success': 'upload-screen',
+    '/shared-file': 'shared-file', '/shared-file-error': 'shared-file', '/shared-file-loading': 'shared-file',
+  };
+  let pairTimer = null;
+  const START = '/dev'; // prototype opens on the dev menu; the real app would start at /register
+  let currentPath = location.hash.replace(/^#/, '') || START;
+  function route() {
+    const id = ROUTES[currentPath] || 'dev';
+    document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+    document.querySelector('.phone-scroll').scrollTop = 0;
+    $('devFab').hidden = id === 'dev';
+    // taskbar (Properties) only once paired: paired Home, Server status, Upload
+    const taskbar = (id === 'home' && currentPath !== '/home-unpaired') || id === 'server' || id === 'upload-screen';
+    $('taskbar').hidden = !taskbar;
+    document.querySelector('.phone').classList.toggle('has-taskbar', taskbar);
+    if (id === 'home') tick();   // refresh "Good afternoon, <name>" right away
+    if (id === 'properties') fillProperties(currentPath !== '/properties-unpaired');
+    // one Home screen, two looks: paired shows Check server + Upload, unpaired shows "connect to my PC"
+    $('home').classList.toggle('unpaired', currentPath === '/home-unpaired');
+    $('home').classList.toggle('server-error', currentPath === '/home-paired-error');
+    renderAll(); // upload states and the server list depend on the route
+    if (id === 'shared-file') resetSingle(); else clearInterval(singleTimer);
+    if (id !== 'pairing-2') { clearTimeout(pairTimer); pairTimer = null; }
+    if (id !== 'pairing-camera') clearTimeout(camTimer);
+    if (currentPath === '/home-paired') startServerCheck(); else clearTimeout(checkTimer);
+    if (id === 'landing-success') $('welcomeMsg').textContent = S.welcomeBack(userName());
+    // routes ending in an error show the popup over their screen
+    const err = ERRORS[currentPath];
+    if (err) showError(err); else hideError();
+  }
+
+  // same Properties screen for both; the not-paired version shows nothing it can't know yet
+  function fillProperties(paired) {
+    const NA = S.notAvailable, UNKNOWN = S.unknown;
+    $('setUser').textContent = paired ? userName() : UNKNOWN;
+    $('setName').textContent = paired ? ($('deviceName').value.trim() || S.defaultDeviceName) : UNKNOWN;
+    $('setDeviceId').textContent = paired ? maskId(MOCK_DEVICE_ID) : NA;
+    $('setPc').textContent = paired ? MOCK_PC_NAME : NA;
+    $('setAddress').textContent = paired ? MOCK_SERVER_ADDRESS : UNKNOWN;
+    if (paired) $('setStatus').innerHTML = '<span>' + S.connectedLabel + '<span class="dot"></span></span>';
+    else $('setStatus').textContent = NA;
+  }
+
+  // ---------- error popup ----------
+  // one message per error route for now; later each cause (camera denied, bad QR, expired…) gets its own
+  const ERRORS = {
+    '/pairing-1-error': { title: S.errorTitle, msg: S.pairScanError, back: '/pairing-1' },
+    // step 2: any server error (for now one generic message); Back returns to step 1 to scan again
+    '/pairing-2-error': { title: S.errorTitle, msg: S.pairServerError, back: '/pairing-1', button: S.back },
+    // OK just closes it; the too-large file stays marked in the list
+    // upload results: OK closes the popup and leaves you on the screen (Retry failed is there)
+    '/upload-partial-failed': { title: S.uploadTitle, msg: S.partialSent(2, 3) },
+    '/upload-success': { kind: 'info', title: S.uploadTitle, heading: S.uploadDoneHeading, msg: S.allSent(3) },
+    '/upload-file-too-large': { title: S.errorTitle, msg: S.tooLarge(F.big.name, fmtSize(F.big.size), fmtSize(MAX_UPLOAD)) },
+    // shared file arrived but this phone isn't ready (not registered / login failed / not paired / server down):
+    // OK goes to Landing, which works out the right place (register, pairing, home…)
+    // camera note before Android's permission prompt: Continue → viewfinder, Not now → back to step 1
+    '/pairing-1-permission': { kind: 'info', title: S.cameraTitle, heading: S.cameraHeading, msg: S.cameraNote,
+      button: S.continueBtn, back: '/pairing-camera', then: () => startFakeScan(),
+      cancel: S.notNow, cancelBack: '/pairing-1' },
+    // register errors: OK closes the popup and leaves you on Register to try again
+    '/register-error-server': { title: S.errorTitle, msg: S.regErrServer, back: '/register' },
+    // placeholder values until the real ApiError(status, detail) is wired in
+    '/register-error-api': { title: S.errorTitle, msg: S.regErrApi, code: 'XXX', details: '<detail from the server goes here>', back: '/register' },
+    // shared file arrived: checking sign-in + pairing before showing Upload (no buttons, can't be closed)
+    '/shared-file-loading': { kind: 'loading', title: S.loadingTitle, heading: S.loadingHeading, msg: S.sharedChecking },
+    '/shared-file-error': { title: S.errorTitle, heading: S.sharedAborted, msg: S.sharedNotReady, back: '/landing' },
+  };  // end of popup list (each entry may also pass code + details)
+  let errorBack = null;
+  // heading is generic ("Error") for every popup for now; an entry can pass its own later
+  // kind: 'error' (default) or 'info'. cancel/cancelBack add a second button. then: runs after OK.
+  let errorCancelBack = null, errorThen = null;
+  // code / details: optional, straight from the API error (status + detail). Shown only when passed.
+  function showError({ title, heading, msg, code, details, back, button, kind, cancel, cancelBack, then }) {
+    $('errorCode').textContent = code ?? '';
+    $('errorDetail').textContent = details ?? '';
+    $('errorDetails').hidden = code == null && details == null;
+    $('errorLayer').dataset.kind = kind || 'error';
+    $('errorCancel').hidden = !cancel;
+    if (cancel) $('errorCancel').textContent = cancel;
+    errorCancelBack = cancelBack || null;
+    errorThen = then || null;
+    $('errorTitle').textContent = title;
+    $('errorHeading').textContent = heading || S.errorHeading;
+    $('errorMsg').textContent = msg;
+    $('errorOk').textContent = button || S.ok;
+    errorBack = back;
+    $('errorLayer').hidden = false;
+    $('errorOk').focus();
+  }
+  function hideError() { $('errorLayer').hidden = true; errorBack = null; }
+  // OK (or ✕) just removes the popup: the screen underneath stays
+  const dismissError = () => { const b = errorBack, t = errorThen; hideError(); if (b) go(b); if (t) t(); };
+  // Cancel (and ✕ on a two-button popup) take the cancel path
+  const cancelError = () => { const b = errorCancelBack; hideError(); if (b) go(b); };
+  // Keep our own path so it also works where the hash can't change (e.g. data: URL previews).
+  let propsReturn = '/home-paired';   // Properties' Back/✕ return to the screen it was opened from
+  const go = path => {
+    if (path.startsWith('/properties') && !currentPath.startsWith('/properties')) propsReturn = currentPath;
+    currentPath = path;
+    try { location.hash = path; } catch (e) {}
+    route();
+  };
+  window.addEventListener('hashchange', () => {
+    currentPath = location.hash.replace(/^#/, '') || START;
+    route();
+  });
+
+  // ---------- events ----------
+  // prototype: Retry "succeeds" and brings back the normal paired home
+  $('retryServer').onclick = () => go('/home-paired');
+  // Retry = start over: back to Landing, which runs the whole start-up check again
+  $('landingRetry').onclick = () => go('/landing');
+  $('propsBtn').onclick = () => go('/properties');
+  $('propsBack').onclick = () => go(propsReturn);
+  $('propsClose').onclick = () => go(propsReturn);
+  // prototype: retrying the failed file "works"
+  $('retryFailed').onclick = () => go('/upload-success');
+  // paired home: check the server on arrival. While checking the button is disabled;
+  // once connected it becomes "View server files" and opens Server status.
+  let checkTimer = null;
+  function startServerCheck() {
+    clearTimeout(checkTimer);
+    $('checkServer').disabled = true;
+    $('checkLabel').textContent = S.checking;
+    $('connMsg').textContent = S.checking; $('connMsg').classList.add('is-checking');
+    checkTimer = setTimeout(() => {
+      $('checkServer').disabled = false;
+      $('checkLabel').textContent = S.viewServerFiles;
+      $('connMsg').textContent = S.serverConnected; $('connMsg').classList.remove('is-checking');
+    }, 1500);   // deliberate delay for the mockup
+  }
+  $('checkServer').onclick = () => go('/server-empty');
+  $('back').onclick = () => go('/home-paired');
+  $('serverClose').onclick = () => go('/home-paired');
+  $('yes').onclick = () => go('/upload-start');
+
+  // shared file to PC: Android's Share menu hands the app one file; send it or cancel
+  const SHARED = { name: 'IMG_20261112_161204.jpg', size: 3.1 * MB };
+  let singleTimer = null;
+  function resetSingle() {
+    clearInterval(singleTimer);
+    $('singleName').textContent = trimName(SHARED.name); $('singleName').title = SHARED.name;
+    $('singleSize').textContent = fmtSize(SHARED.size);
+    $('singleProgress').classList.remove('show'); $('singleFill').style.width = '0%';
+    $('singleMsg').textContent = '';
+    $('singleUpload').disabled = false; $('singleCancel').disabled = false;
+    $('singleCancel').textContent = S.cancel;
+  }
+  $('singleUpload').onclick = () => {
+    $('singleUpload').disabled = true; $('singleCancel').disabled = true;
+    $('singleProgress').classList.add('show');
+    let p = 0;
+    singleTimer = setInterval(() => {
+      p += 6; $('singleFill').style.width = Math.min(p, 100) + '%';
+      if (p >= 100) {
+        clearInterval(singleTimer);
+        $('singleProgress').classList.remove('show');
+        $('singleMsg').textContent = S.allSent(1);
+        $('singleCancel').textContent = S.done; $('singleCancel').disabled = false;
+      }
+    }, 60);
+  };
+  // real app: Cancel/Done would close this and return to the app the file came from
+  $('singleCancel').onclick = () => go('/home-paired');
+  $('singleClose').onclick = () => go('/home-paired');
+  $('uploadClose').onclick = () => go('/home-paired');
+  $('backConfirm').onclick = () => go('/home-paired');
+
+  // pairing flow: unpaired home → scan (step 1) → wait for server (step 2) → paired home
+  $('connectPc').onclick = () => go('/pairing-1');
+  $('pair1Close').onclick = () => go('/home-unpaired');
+  $('errorOk').onclick = dismissError;
+  $('errorClose').onclick = () => ($('errorCancel').hidden ? dismissError() : cancelError());
+  $('errorCancel').onclick = cancelError;
+  // Open camera → explain first (our note), then Android's own permission prompt, then the viewfinder
+  $('openCamera').onclick = () => go('/pairing-1-permission');
+  // prototype: when arriving from Continue, "find" a QR after a moment and move on to step 2
+  let camTimer = null;
+  function startFakeScan() {
+    clearTimeout(camTimer);
+    camTimer = setTimeout(() => {
+      go('/pairing-2');
+      pairTimer = setTimeout(() => go('/home-paired'), 3000);
+    }, 2500);
+  }
+  $('camCancel').onclick = () => go('/pairing-1');
+  $('camClose').onclick = () => go('/pairing-1');
+
+  // dev menu
+  $('devFab').onclick = () => go('/dev');
+  document.querySelectorAll('[data-go]').forEach(b => { b.onclick = () => go(b.dataset.go); });
+
+  // device name checker: drop anything that isn't a letter (any language), digit, space, - or _,
+  // collapse repeated spaces, cap at 20. Runs as you type and on paste.
+  const NAME_MAX = 20;                              // would live in config.ts
+  const NAME_STRIP = /[^\p{L}\p{N} _-]/gu;
+  const cleanName = v => v.replace(NAME_STRIP, '').replace(/ {2,}/g, ' ').slice(0, NAME_MAX);
+  // same rule for both names (user + device)
+  function nameChecker(inputId, countId) {
+    $(inputId).addEventListener('input', e => {
+      const el = e.target, before = el.value, after = cleanName(before);
+      if (after !== before) {
+        const pos = Math.max(0, el.selectionStart - (before.length - after.length));
+        el.value = after; el.setSelectionRange(pos, pos);
+      }
+      $(countId).textContent = S.nameCount(el.value.length, NAME_MAX);
+    });
+  }
+  nameChecker('userName', 'userCount');
+  nameChecker('deviceName', 'nameCount');
+  const userName = () => $('userName').value.trim() || S.defaultUserName;
+
+  // register: fake the key-gen + POST /auth/register steps, then land on Home
+  $('registerBtn').onclick = () => {
+    const name = $('deviceName').value.trim();
+    const status = $('regStatus');
+    status.classList.remove('status-ok', 'status-bad');
+    if (!$('userName').value.trim()) { status.classList.add('status-bad'); status.textContent = S.regUserRequired; return; }
+    if (!name) { status.classList.add('status-bad'); status.textContent = S.regNameRequired; return; }
+    $('registerBtn').disabled = true; $('deviceName').disabled = true; $('userName').disabled = true;
+    const steps = [S.regKeys, S.regSending, S.regDone];
+    steps.forEach((txt, i) => setTimeout(() => {
+      status.textContent = txt;
+      if (i === steps.length - 1) {
+        status.classList.add('status-ok');
+        setTimeout(() => {
+          $('registerBtn').disabled = false; $('deviceName').disabled = false; $('userName').disabled = false; status.textContent = '';
+          go('/home-unpaired'); // just registered = not paired with a PC yet
+        }, 700);
+      }
+    }, 500 * i));
+  };
+  $('backClose').onclick = () => go('/home-paired');
+  $('choose').onclick = () => $('filePicker').click();
+  $('clearAll').onclick = () => { queue = []; selected = null; renderAll(); };
+  $('filePicker').onchange = e => {
+    queue.push(...Array.from(e.target.files).map(f => ({ name: f.name, size: f.size })));
+    e.target.value = '';
+    renderAll();
+  };
+
+  $('upload').onclick = () => {
+    const bar = $('progress'), fill = $('progressFill');
+    // while sending, the queue is locked: no clearing it and no adding to it
+    $('upload').disabled = true; $('choose').disabled = true; $('clearAll').disabled = true;
+    bar.classList.add('show');
+    let p = 0;
+    const t = setInterval(() => {
+      p += 7; fill.style.width = Math.min(p, 100) + '%';
+      if (p >= 100) {
+        clearInterval(t);
+        serverFiles.push(...queue); queue = []; selected = null;
+        setTimeout(() => { bar.classList.remove('show'); fill.style.width = '0%'; $('choose').disabled = false; renderAll(); }, 250);
+      }
+    }, 60);
+  };
+
+  $('homeSearch').oninput = renderAll;
+  $('serverSearch').oninput = renderAll;
+
+  tick(); setInterval(tick, 15000);
+  renderAll();
+  route();
+</script>
+</body>
+</html>

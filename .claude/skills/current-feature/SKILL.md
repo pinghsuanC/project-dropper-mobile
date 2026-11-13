@@ -71,7 +71,7 @@ Each feature is one commit, made by `complete`. Its message is written for a per
   "fix(pair): impl useScan hook + refactor".
 - No file lists, hashes, step numbers or internal shorthand in the subject.
 - Add a short body only when the reason for the change isn't obvious from the subject.
-- End with the commit attribution line.
+- No attribution: no `Co-Authored-By` line, no "Generated with Claude Code".
 
 ### Checks
 
@@ -208,7 +208,7 @@ Do not change code during review. Report findings and ask before fixing anything
 6. Stage the approved files and the tracker, and make one commit with the approved message.
 7. `git push -u origin <branch>`. Never force-push.
 8. Open the PR: `gh pr create --base main --head <branch>`. Title: the feature summary
-   in plain English. Body: what changed, the requirements met, and the check results. End
-   the body with the PR attribution line.
+   in plain English. Body: what changed, the requirements met, and the check results. No
+   attribution line in the body.
 9. Give the user the PR link. Do not merge it or enable auto-merge. CI will handle merging
    once it is set up.
