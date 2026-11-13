@@ -15,6 +15,17 @@ npm install
 npx expo start
 ```
 
+## Prototype
+
+The clickable HTML prototype is `context/prototypes/temp/index.html`. Serve it with
+`python -m http.server 5500 --directory context/prototypes/temp` (or the `prototype`
+entry in `.claude/launch.json`) and open `http://localhost:5500`. The yellow DEV button
+opens a menu of every screen.
+
+Screenshots live next to it, one folder per DEV-menu category (`landing/`, `register/`,
+`home/`, …), each file prefixed with its category. Timed flows are saved as numbered
+frames (`register-submit-01.png`, `-02`, …).
+
 # Project Overview
 1. Project + connection
 
@@ -42,39 +53,13 @@ Done when the desktop’s test_download receives a file sent from the phone. �
 
 ## Future features
 
-Grouped by the app's sections (the same ones as the prototype's dev menu).
-
-### Register
-- User register and login
-
-### Pairing
-- Cancel button on Pairing step 2 (while waiting for the server)
-
-### Server
-- Storage size limit (keep the total below 30 GB)
-- Storage free tier checking (stop working if the current month's quota has been met)
-
-### Upload
-- Rename files on the phone
-- File previews
-- Chunking larger files (allow up to 10 GB)
-- Cancel during upload
-
-### Device & User (Properties)
-- Delete registry from server: un-registers the phone, deletes the local key (PEM) and device ID, and so disconnects it from the PC. Asks for confirmation first
-
-### Whole app
-- iOS compatibility (turn it into a web app)
-- Multi-language support (all text is already in `strings.ts`; CJK fonts noted in `context/details/2020-typography.md`)
+Listed under `# Future Features` in `context/tracker/current-feature.md`.
 
 ## Open decisions (next session)
 
 Not decided yet. Details for each live in `context/details/` where noted.
 
 ### Do first
-- **Save the prototype.** `context/prototypes/temp/` is gitignored, so the ~40 designed
-  screens exist only on this PC. Capture one PNG per screen into `context/prototypes/`.
-- **Commit this work.** Everything is uncommitted on `main`; move it to a branch and open a PR.
 - **Rename `context/requriements/` → `context/requirements/`** (CLAUDE.md uses the correct
   spelling), then write a short requirements file per feature from the prototype.
 

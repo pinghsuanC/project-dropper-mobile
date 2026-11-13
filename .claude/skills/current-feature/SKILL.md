@@ -1,7 +1,7 @@
 ---
 name: current-feature
-description: Track one feature at a time through load, start, review and complete, using context/tracker/current-feature.md as the source of truth. Use when the user runs /current-feature with one of those actions.
-argument-hint: load [prompt-file | description] | start | review | complete
+description: Track one feature at a time through load, start, review and complete, and append planned features with future, using context/tracker/current-feature.md as the source of truth. Use when the user runs /current-feature with one of those actions.
+argument-hint: load [prompt-file | description] | start | review | complete | future <description>
 disable-model-invocation: true
 ---
 
@@ -12,9 +12,9 @@ Manage the feature that is being worked on in this repo. The tracker file is
 
 Action: `$ARGUMENTS`
 
-The first word is the action (`load`, `start`, `review`, `complete`). Anything after it is
-the action's input. If the action is missing or unknown, list the four actions with one line
-each and stop.
+The first word is the action (`load`, `start`, `review`, `complete`, `future`). Anything after
+it is the action's input. If the action is missing or unknown, list the five actions with one
+line each and stop.
 
 ## Tracker file format
 
@@ -33,9 +33,20 @@ Keep the tracker in exactly this shape. `## Details` is empty between features.
 # History
 
 - YYYY-MM-DD: <details>
+
+# Future Features
+
+<!-- Only change this section when the user asks, through /current-feature future. -->
+
+<planned features, grouped by app section>
 ```
 
 History is newest first. Never edit or remove existing history entries.
+
+`# Future Features` belongs to the user. Only the `future` action changes it, and only by
+appending. `load`, `start`, `review` and `complete` never edit it, and never remove an item
+because it was built. Edit or remove an existing item only when the user asks for that
+change in words.
 
 ## Shared steps
 
@@ -71,7 +82,7 @@ Each feature is one commit, made by `complete`. Its message is written for a per
   "fix(pair): impl useScan hook + refactor".
 - No file lists, hashes, step numbers or internal shorthand in the subject.
 - Add a short body only when the reason for the change isn't obvious from the subject.
-- End with the commit attribution line.
+- No attribution: no `Co-Authored-By` line, no "Generated with Claude Code".
 
 ### Checks
 
@@ -208,7 +219,22 @@ Do not change code during review. Report findings and ask before fixing anything
 6. Stage the approved files and the tracker, and make one commit with the approved message.
 7. `git push -u origin <branch>`. Never force-push.
 8. Open the PR: `gh pr create --base main --head <branch>`. Title: the feature summary
-   in plain English. Body: what changed, the requirements met, and the check results. End
-   the body with the PR attribution line.
+   in plain English. Body: what changed, the requirements met, and the check results. No
+   attribution line in the body.
 9. Give the user the PR link. Do not merge it or enable auto-merge. CI will handle merging
    once it is set up.
+
+## future
+
+Append planned features to `# Future Features`. Works at any time, including while a
+feature is in progress, because it never touches `Status`, `Branch` or `## Details`.
+
+1. Take the description after `future`. It may hold several items. If there is none, ask
+   what to add and stop.
+2. For each item, pick its group from the section's headings (the prototype's dev-menu
+   sections, plus `Whole app`). If none fits or the choice is unclear, ask: offer the closest
+   group or a new heading.
+3. Write each item as one plain-English line. Keep the user's meaning and details; don't add
+   requirements they didn't give.
+4. Append each line at the end of its group. Don't reorder, reword or remove existing items.
+5. Show the user the lines added and their groups. Don't commit.
