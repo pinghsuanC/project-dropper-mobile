@@ -55,3 +55,6 @@ coverage/
 
 # ui-reviewer captures
 .ui-review/
+
+# temporary HTML prototype (scratch, not shipped)
+context/prototypes/temp/
