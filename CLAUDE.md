@@ -13,6 +13,11 @@ through my own FastAPI server. Server + desktop client live in a separate repo
 Related material lives under `context/`:
 - `context/prototypes/`: screenshots of the planned screens, named after the page they show.
 - `context/requirements/`: requirements for specific features.
+- `context/details/`: numbered design details by area (1000s app and app state,
+  2000s UI: components, typography, colours, GIFs). Its `README.md`
+  lists them. Read the relevant one before changing those areas.
+  **New design or architecture decisions go there** as a new numbered record (and a row
+  in its `README.md`), not into this file. This file keeps only rules and pointers.
 - `context/tracker/current-feature.md`: the feature being worked on now (status, branch,
   implementation details) and the history of finished features. Managed by the
   `/current-feature` skill; don't edit it by hand during a feature.
@@ -87,19 +92,23 @@ Check the server's `/docs` page when unsure; do not guess field names.
 
 ## UI style: Windows 98 inspired
 
-- Styling with `StyleSheet` + `theme.ts` tokens. **No Tailwind / NativeWind, no UI component libraries.**
-- Build screens only from our own components in `components/`:
-  `Window`, `TitleBar`, `Button`, `TextField`, `ListBox`, `StatusBar`, `ProgressBar`.
-- Square corners (`borderRadius: 0`), no shadows, 2px bevels:
-  raised = white top/left + black bottom/right; sunken = the reverse with a white inside.
-  Buttons invert their bevel while pressed.
-- Colors from `theme.ts` only (face `#c0c0c0`, desktop `#008080`, title bar `#000080`).
-- Small type (11–13px), free pixel-style font. "Inspired by" only: no Microsoft logos, fonts, or sounds.
-- GIFs via `expo-image`.
+- **Hard rules:** `StyleSheet` + `theme.ts` only. No Tailwind / NativeWind, no UI component
+  libraries. "Inspired by" only: no Microsoft logos, fonts, or sounds.
+- **Find the details first.** Before any UI work, read `context/details/2000-ui.md` and the
+  record for what you're touching (2010 components, 2020 text, 2030 colours, 2040 GIFs).
+  They're the source of truth; this file doesn't repeat them.
+- **Reuse before creating.** Look in `src/components/ui/` and 2010-components for a
+  component that does the job, or would with one more prop. Prefer extending over creating.
+- **If unsure, ask.** If it's unclear whether to reuse, extend or create, or the records
+  don't cover the case, stop and ask the user, with the options in a line or two each.
+- **Write it back.** Once a new component, prop or style is agreed, add it to the right
+  layer folder and to its record (2010–2040).
+- No hex colours, font sizes or spacing values in components or screens: only `theme.ts`
+  tokens.
 
 ## Code conventions
 
-- All source lives in `src/` and is imported through the `@/` alias (`@/components/Button`).
+- All source lives in `src/` and is imported through the `@/` alias (`@/components/ui`).
   Folder names in this file (`api/`, `lib/`, `components/`) are under `src/`.
 - Routes only in `src/app/` (Expo Router: every file there is a screen). Everything else
   goes outside it.

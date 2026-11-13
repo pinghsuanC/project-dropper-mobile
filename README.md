@@ -39,3 +39,68 @@ Pick it with expo-document-picker (it gives name, size, mimeType)
 Checksum: SHA-256 of the file’s bytes. In JS this is trickier than in Python for big files, so start with small test files
 prepare-upload → PUT to upload_url (expo-file-system’s uploadAsync with httpMethod: "PUT" and binary upload) → finish-upload
 Done when the desktop’s test_download receives a file sent from the phone. 🎉
+
+## Future features
+
+Grouped by the app's sections (the same ones as the prototype's dev menu).
+
+### Register
+- User register and login
+
+### Pairing
+- Cancel button on Pairing step 2 (while waiting for the server)
+
+### Server
+- Storage size limit (keep the total below 30 GB)
+- Storage free tier checking (stop working if the current month's quota has been met)
+
+### Upload
+- Rename files on the phone
+- File previews
+- Chunking larger files (allow up to 10 GB)
+- Cancel during upload
+
+### Device & User (Properties)
+- Delete registry from server: un-registers the phone, deletes the local key (PEM) and device ID, and so disconnects it from the PC. Asks for confirmation first
+
+### Whole app
+- iOS compatibility (turn it into a web app)
+- Multi-language support (all text is already in `strings.ts`; CJK fonts noted in `context/details/2020-typography.md`)
+
+## Open decisions (next session)
+
+Not decided yet. Details for each live in `context/details/` where noted.
+
+### Do first
+- **Save the prototype.** `context/prototypes/temp/` is gitignored, so the ~40 designed
+  screens exist only on this PC. Capture one PNG per screen into `context/prototypes/`.
+- **Commit this work.** Everything is uncommitted on `main`; move it to a branch and open a PR.
+- **Rename `context/requriements/` → `context/requirements/`** (CLAUDE.md uses the correct
+  spelling), then write a short requirements file per feature from the prototype.
+
+### API contract (new `context/details/3000-api.md`)
+- Routes the app needs that the server doesn't have yet: `GET /health`, pairing claim,
+  "paired with?", list server files, `GET /gifs`, `GET /quote`.
+- Which routes start-up **requires** (health, login, paired with) vs. treats as optional
+  (GIFs, quote).
+- GIFs before login: local only, or a GIF route that needs no token?
+- Upload size limit (100 MB in the prototype is a placeholder) and where the app gets it.
+- Timeouts: the Sharing "loading" check (10–15 s suggested) and normal requests.
+- How the client turns FastAPI's 422 `detail` list into readable text for the error popup.
+- User name: keep it on the phone only, or add a field on the server?
+
+### UI
+- GIFs: final slots and the **Address** column in `2040-gifs.md`.
+- `success` green on grey fails contrast (~2.8:1): darken it or only use it on white
+  (`2030-colors.md`).
+- Popup headings per error: only Shared file ("Process Aborted") and Upload success
+  ("Upload complete") are decided; the rest say "Error".
+- Optional pixel Chinese font (Cubic 11 / Fusion Pixel) or keep the system fallback
+  (`2020-typography.md`).
+- Check the screens at a narrow phone width (~360 px); the Upload button row is the tightest.
+- App icon, splash screen, and the name shown in Android's Share menu.
+
+### Setup
+- Create `.env.example` and set `EXPO_PUBLIC_APP_ENV` / `EXPO_PUBLIC_API_BASE_URL` per
+  `eas.json` profile (`1020-environments.md`).
+- When to switch from Expo Go to a dev build (needed for Sharing).
