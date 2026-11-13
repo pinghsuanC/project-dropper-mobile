@@ -92,8 +92,11 @@ Run all of these and report each result:
 npm test
 npx jest --coverage
 npx tsc --noEmit
-npx expo lint
+npm run lint
 ```
+
+These match the CI workflow (`.github/workflows/ci.yml`). `npm run lint` fails on any
+warning (`--max-warnings 0`), as CI does.
 
 If any of these can't run (for example a missing `test` script), report it and stop. Don't
 install or configure tooling as part of a feature.
@@ -221,8 +224,9 @@ Do not change code during review. Report findings and ask before fixing anything
 8. Open the PR: `gh pr create --base main --head <branch>`. Title: the feature summary
    in plain English. Body: what changed, the requirements met, and the check results. No
    attribution line in the body.
-9. Give the user the PR link. Do not merge it or enable auto-merge. CI will handle merging
-   once it is set up.
+9. Give the user the PR link. Do not merge it yourself. CI runs lint, type check and unit
+   tests, then squash-merges the PR and deletes its branch once all three pass. If a check
+   fails, fix it on the branch and push again; never force-push.
 
 ## future
 

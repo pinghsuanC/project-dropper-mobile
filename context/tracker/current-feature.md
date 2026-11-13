@@ -1,13 +1,13 @@
 # Current Feature
 
-- Status: 
+- Status: Not Started
+- Branch: 
 
 ## Details
 
-
-
 # History
 
+- 2026-11-13: Add CI that lints, type checks and tests every PR and push to main, and auto-merges passing PRs
 - 2026-11-13: Discussed and built the HTML prototype, and captured a screenshot of each screen into `context/prototypes/` (numbered frames for timed flows)
 
 # Future Features
