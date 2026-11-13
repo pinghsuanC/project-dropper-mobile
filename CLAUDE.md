@@ -45,7 +45,7 @@ npm test                  # Jest, runs once (jest-expo preset)
 npm run test:watch        # Jest in watch mode
 npx jest --coverage       # coverage report (written to coverage/, gitignored)
 npx tsc --noEmit          # type check
-npx expo lint             # lint (first run sets up ESLint)
+npm run lint              # lint (expo lint, fails on any warning, same as CI)
 npx expo install <pkg>    # add packages; never plain npm install <pkg>
 npx expo-doctor           # check dependency versions and config
 ```
@@ -150,3 +150,8 @@ Check the server's `/docs` page when unsure; do not guess field names.
 - No attribution in commits or PRs: no `Co-Authored-By` trailer, no "Generated with
   Claude Code" line.
 - Changes reach `main` through a PR. Never force-push.
+- CI (`.github/workflows/ci.yml`) runs lint, type check and unit tests on every PR into
+  `main` and every push to `main`. A same-repo, non-draft PR is squash-merged and its
+  branch deleted once all three pass, so don't merge PRs by hand. That auto-merge doesn't
+  start another run on `main` (GitHub doesn't trigger workflows from `GITHUB_TOKEN`
+  merges); the PR run already tested the merged result.
