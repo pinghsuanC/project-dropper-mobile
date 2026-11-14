@@ -18,20 +18,26 @@ Related material lives under `context/`:
   lists them. Read the relevant one before changing those areas.
   **New design or architecture decisions go there** as a new numbered record (and a row
   in its `README.md`), not into this file. This file keeps only rules and pointers.
-- `context/tracker/current-feature.md`: the feature being worked on now (status, branch,
-  implementation details) and the history of finished features. Managed by the
-  `/current-feature` skill; don't edit it by hand during a feature. Its `# Future Features`
-  section is the planned-features list: change it only when the user asks, through
-  `/current-feature future`.
+- `context/tracker/current-feature.md`: the feature being worked on now (its `## Scope`:
+  name and feature branch), the current part (status, branch, implementation details) and
+  the history. `context/tracker/current-feature-parts.md` holds the feature's parts still
+  to do and done. Both are managed by the `/current-feature` skill; don't edit them by hand
+  during a feature. The tracker's `# Future Features` section is the planned-features list:
+  change it only when the user asks, through `/current-feature future`.
 
 ## Skills
 
-- `/current-feature load [prompt-file | description]`: plan a feature into the tracker.
-- `/current-feature start`: create the feature branch, write tests first, implement.
+- `/current-feature load [prompt-file | description]`: plan the next part of a feature into
+  the tracker (or the next stored part, with no input); a large feature is split into parts
+  with a `feature-branch-*` branch.
+- `/current-feature start`: create the part branch from the feature branch (or `main`),
+  write tests first, implement.
 - `/current-feature review`: run checks, show coverage, review scope, quality, reusability
   and exposed env variables. Read-only.
-- `/current-feature complete`: update the tracker history, make the feature's single commit
-  (after approval), push and open a PR into `main`.
+- `/current-feature complete-part`: make the part's single commit (after approval), push
+  and open a PR into the feature branch. The scope stays.
+- `/current-feature complete`: wrap up the whole feature (after approval) and open a PR
+  from the feature branch into `main` (or, for a single-part feature, from its branch).
 - `/current-feature future <description>`: append planned features to the tracker's
   `# Future Features` section.
 - `/code-reviewer [path | --changed]`: read-only report of exposed secrets, unused code,
@@ -160,10 +166,12 @@ Check the server's `/docs` page when unsure; do not guess field names.
 
 ## Git workflow
 
-- Work on `feature/<name>` branches created by `/current-feature start`; don't commit to
-  `main` directly.
-- One commit per feature, made by `/current-feature complete`, with a plain-English subject
-  under 60 characters.
+- Work on `feature/<name>` part branches created by `/current-feature start`. A feature
+  split into parts collects them on its `feature-branch-<name>` branch (named in the
+  tracker's `## Scope`) until `/current-feature complete` merges it into `main`. Don't
+  commit to `main` directly.
+- One commit per part, made by `/current-feature complete-part` (or `complete` for a
+  single-part feature), with a plain-English subject under 60 characters.
 - No attribution in commits or PRs: no `Co-Authored-By` trailer, no "Generated with
   Claude Code" line.
 - Changes reach `main` through a PR. Never force-push.

@@ -1,5 +1,13 @@
 # Current Feature
 
+## Scope
+
+- Feature: Routes and basic pages
+- Feature branch: feature-branch-routes-and-basic-pages
+- Parts: [current-feature-parts.md](current-feature-parts.md)
+
+## Current part
+
 - Status: Not Started
 - Branch: 
 
