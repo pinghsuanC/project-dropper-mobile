@@ -7,6 +7,7 @@
 
 # History
 
+- 2026-11-14: Add the Windows 98 theme, fonts and the first shared UI components, with a static preview on Landing
 - 2026-11-13: Add a route and placeholder page for every screen, and a Zustand session store for app state
 - 2026-11-13: Add CI that lints, type checks and tests every PR and push to main, and auto-merges passing PRs
 - 2026-11-13: Discussed and built the HTML prototype, and captured a screenshot of each screen into `context/prototypes/` (numbered frames for timed flows)
