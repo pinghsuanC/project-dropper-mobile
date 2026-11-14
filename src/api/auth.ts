@@ -1,8 +1,9 @@
-// Auth routes (the server repo's API.md). All three are unauthenticated.
+// Auth routes (the server repo's API.md). Only /auth/me needs the session token.
 import { request } from '@/api/client';
 import type {
   ChallengeData,
   ChallengeRequest,
+  MeData,
   RegisterData,
   RegisterRequest,
   VerifyChallengeData,
@@ -36,4 +37,9 @@ export async function registerDevice({ name, publicKey, fingerprint }: RegisterI
   };
   const data = await request<RegisterData>(API_PATHS.register, { method: 'POST', body });
   return data.device_id;
+}
+
+/** `GET /auth/me` (protected): checks the session token and returns this device. */
+export async function getMe(): Promise<MeData> {
+  return request<MeData>(API_PATHS.me, { auth: true });
 }

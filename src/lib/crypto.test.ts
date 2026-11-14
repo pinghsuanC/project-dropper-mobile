@@ -1,7 +1,7 @@
 import * as ed from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha2.js';
 
-import { deviceFingerprint, generateKeyPair, publicKeyToPem, signChallenge } from '@/lib/crypto';
+import { deviceFingerprint, generateKeyPair, publicKeyFor, publicKeyToPem, signChallenge } from '@/lib/crypto';
 
 jest.mock('expo-crypto', () => ({
   getRandomBytesAsync: jest.fn(async (n: number) => globalThis.crypto.getRandomValues(new Uint8Array(n))),
@@ -71,5 +71,12 @@ describe('deviceFingerprint', () => {
     const expected = '9d2e6e6891dd1bbe2119e1f12c1d81e220b8da14a64f68f83dddd8e6fc6769a0';
     expect(deviceFingerprint()).toBe(expected);
     expect(deviceFingerprint()).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe('publicKeyFor', () => {
+  it('gives the same public key generateKeyPair paired with the private key', async () => {
+    const { privateKey, publicKey } = await generateKeyPair();
+    expect(await publicKeyFor(privateKey)).toEqual(publicKey);
   });
 });

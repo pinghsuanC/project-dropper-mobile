@@ -26,6 +26,7 @@ export const API_PATHS = {
   register: '/auth/register',
   challenge: '/auth/challenge',
   verifyChallenge: '/auth/verify-challenge',
+  me: '/auth/me',
 } as const;
 
 /** The `platform` this app registers as. */

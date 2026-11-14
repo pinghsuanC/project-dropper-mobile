@@ -26,8 +26,12 @@ function toBase64(bytes: Uint8Array): string {
 /** A new key pair. The private key is 32 random bytes from the OS's secure random source. */
 export async function generateKeyPair(): Promise<KeyPair> {
   const privateKey = await Crypto.getRandomBytesAsync(32);
-  const publicKey = await ed.getPublicKeyAsync(privateKey);
-  return { privateKey, publicKey };
+  return { privateKey, publicKey: await publicKeyFor(privateKey) };
+}
+
+/** The public key that belongs to a stored private key (e.g. to register again). */
+export async function publicKeyFor(privateKey: Uint8Array): Promise<Uint8Array> {
+  return ed.getPublicKeyAsync(privateKey);
 }
 
 /** The raw 32-byte public key as PEM SubjectPublicKeyInfo, the only form the server accepts. */

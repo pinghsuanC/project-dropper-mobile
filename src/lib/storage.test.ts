@@ -1,7 +1,15 @@
 import * as SecureStore from 'expo-secure-store';
 
 import { STORAGE_KEYS } from '@/constants/config';
-import { clearDevice, getDevice, getPrivateKey, saveDevice, savePrivateKey } from '@/lib/storage';
+import {
+  clearDevice,
+  deleteDeviceId,
+  getDevice,
+  getPrivateKey,
+  saveDevice,
+  saveDeviceId,
+  savePrivateKey,
+} from '@/lib/storage';
 
 jest.mock('expo-secure-store', () => {
   const store = new Map<string, string>();
@@ -79,4 +87,24 @@ it('only ever writes the known storage keys (no session token)', async () => {
   const written = (SecureStore.setItemAsync as jest.Mock).mock.calls.map(([key]) => key);
   expect(written.sort()).toEqual(Object.values(STORAGE_KEYS).sort());
   expect(written.some((key: string) => /token/i.test(key))).toBe(false);
+});
+
+describe('device_id only', () => {
+  it('saveDeviceId replaces the device_id and keeps the names and key', async () => {
+    await savePrivateKey(new Uint8Array(32).fill(3));
+    await saveDevice({ deviceId: 'old', userName: 'Ping', deviceName: 'Pixel' });
+    await saveDeviceId('new');
+    expect(await getDevice()).toEqual({ deviceId: 'new', userName: 'Ping', deviceName: 'Pixel' });
+    expect(await getPrivateKey()).toEqual(new Uint8Array(32).fill(3));
+  });
+
+  it('deleteDeviceId removes only the device_id', async () => {
+    await savePrivateKey(new Uint8Array(32).fill(3));
+    await saveDevice({ deviceId: 'abc-123', userName: 'Ping', deviceName: 'Pixel' });
+    await deleteDeviceId();
+    expect(await getDevice()).toBeNull();
+    expect(store.get(STORAGE_KEYS.userName)).toBe('Ping');
+    expect(store.get(STORAGE_KEYS.deviceName)).toBe('Pixel');
+    expect(await getPrivateKey()).toEqual(new Uint8Array(32).fill(3));
+  });
 });

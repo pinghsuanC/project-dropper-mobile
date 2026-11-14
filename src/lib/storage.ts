@@ -51,3 +51,13 @@ export async function getPrivateKey(): Promise<Uint8Array | null> {
 export async function savePrivateKey(privateKey: Uint8Array): Promise<void> {
   await SecureStore.setItemAsync(STORAGE_KEYS.privateKey, bytesToHex(privateKey));
 }
+
+/** Replace only the device_id (after registering again); names and key stay. */
+export async function saveDeviceId(deviceId: string): Promise<void> {
+  await SecureStore.setItemAsync(STORAGE_KEYS.deviceId, deviceId);
+}
+
+/** Forget only the device_id (its key is gone); names and key stay. */
+export async function deleteDeviceId(): Promise<void> {
+  await SecureStore.deleteItemAsync(STORAGE_KEYS.deviceId);
+}

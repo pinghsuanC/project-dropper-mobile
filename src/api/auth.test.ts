@@ -1,4 +1,4 @@
-import { registerDevice, requestChallenge, verifyChallenge } from '@/api/auth';
+import { getMe, registerDevice, requestChallenge, verifyChallenge } from '@/api/auth';
 import { ApiError } from '@/api/client';
 import { getSession } from '@/state/session';
 
@@ -78,5 +78,22 @@ describe('registerDevice', () => {
   it.each([400, 409, 422])('throws ApiError on %i', async (status) => {
     respond(status, { detail: 'x' });
     await expect(registerDevice(input)).rejects.toMatchObject({ status });
+  });
+});
+
+describe('getMe', () => {
+  it('sends GET /auth/me with the session token and returns data', async () => {
+    const me = { device_id: 'dev-1', name: 'Pixel', platform: 'android' };
+    respond(200, { message: 'ok', data: me });
+    expect(await getMe()).toEqual(me);
+    const [url, init] = fetchMock.mock.calls.at(-1)!;
+    expect(url).toBe('http://server.test:8000/auth/me');
+    expect(init.method).toBe('GET');
+    expect(init.headers.Authorization).toBe('Bearer secret-token');
+  });
+
+  it.each([401, 403, 422])('throws ApiError on %i', async (status) => {
+    respond(status, { detail: 'x' });
+    await expect(getMe()).rejects.toMatchObject({ status });
   });
 });
