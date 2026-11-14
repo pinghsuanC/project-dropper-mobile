@@ -148,6 +148,9 @@ Check the server's `/docs` page when unsure; do not guess field names.
 
 - Config values (API paths, timeouts, size limits, retry counts, storage keys) go in
   `src/constants/config.ts`. It's also the only file that reads `process.env`.
+- Server enums (`server/enums.py`: statuses, platforms) are mirrored in
+  `src/constants/enums.ts` as `as const` objects + union types, never TypeScript `enum`
+  (see `context/details/1040`).
 - All user-facing text goes in `src/constants/strings.ts`, grouped by screen, for later
   translation. Text with values in it is a function, e.g. `sent: (fileName) => ...`, never
   joined from pieces.
