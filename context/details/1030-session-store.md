@@ -16,7 +16,7 @@ Provider: any component reads it, and code outside React reads it too.
 
 | Field | Start | Action |
 |---|---|---|
-| `deviceId`, `userName`, `deviceName` | `null` | `setIdentity({ deviceId, userName, deviceName })` |
+| `deviceId`, `userName`, `deviceName` | `null` | `setIdentity({ deviceId, userName, deviceName })`; the names may be `null` (1010) |
 | `token` | `null` | `setToken(token \| null)` |
 | `pairedWith` | `null` (not paired) | `setPairedWith({ pcName } \| null)` |
 | `quote` | first entry of `assets/quotes.json` | `setQuote(text)` |

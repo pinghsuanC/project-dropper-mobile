@@ -7,6 +7,7 @@
 
 # History
 
+- 2026-11-14: Log in on every launch from Landing and go to Home, Register, or a Retry popup
 - 2026-11-14: Add secure storage, device key signing and the server client that start-up login will use
 - 2026-11-14: Add the Windows 98 theme, fonts and the first shared UI components, with a static preview on Landing
 - 2026-11-13: Add a route and placeholder page for every screen, and a Zustand session store for app state

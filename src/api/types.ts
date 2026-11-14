@@ -23,3 +23,6 @@ export type RegisterRequest = {
   fingerprint: string;
 };
 export type RegisterData = { device_id: string };
+
+/** `GET /auth/me`. (`welcome_gif` is 🚧 on the server and not read yet.) */
+export type MeData = { device_id: string; name: string; platform: string };

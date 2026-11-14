@@ -42,6 +42,13 @@ describe('session store', () => {
     expect(session.pairedWith).toBeNull();
   });
 
+  test('setIdentity accepts missing names', () => {
+    getSession().setIdentity({ deviceId: 'dev-1', userName: null, deviceName: null });
+    expect(getSession().deviceId).toBe('dev-1');
+    expect(getSession().userName).toBeNull();
+    expect(getSession().deviceName).toBeNull();
+  });
+
   test('setToken sets only the token, and can clear it', () => {
     getSession().setToken('tok');
     expect(getSession().token).toBe('tok');

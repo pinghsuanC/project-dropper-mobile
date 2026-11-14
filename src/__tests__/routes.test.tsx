@@ -5,6 +5,9 @@ import { fireEvent, renderRouter, screen, testRouter } from 'expo-router/testing
 import { strings } from '@/constants/strings';
 import { getSession } from '@/state/session';
 
+// Landing runs start-up on mount; keep it pending so these route tests never call the server.
+jest.mock('@/lib/startup', () => ({ runStartup: jest.fn(() => new Promise(() => {})) }));
+
 const APP_DIR = './src/app';
 
 beforeEach(() => {
@@ -30,30 +33,7 @@ describe('Landing', () => {
     expect(screen.getByText(strings.landing.connecting)).toBeTruthy();
   });
 
-  test('previews the "Not registered" popup (static: no redirect)', async () => {
-    jest.useFakeTimers();
-    try {
-      await openAt('/');
-      expect(screen.getByText(strings.landing.notRegisteredTitle)).toBeTruthy();
-      expect(screen.getByText(strings.landing.notRegistered)).toBeTruthy();
-      jest.advanceTimersByTime(5000);
-      expect(screen).toHavePathname('/');
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  test('goes to Home', async () => {
-    await openAt('/');
-    await pressLink(strings.landing.toHome);
-    expect(screen).toHavePathname('/home');
-  });
-
-  test('goes to Register', async () => {
-    await openAt('/');
-    await pressLink(strings.landing.toRegister);
-    expect(screen).toHavePathname('/register');
-  });
+  // Its start-up outcomes and redirects are in landing.test.tsx.
 });
 
 describe('Register', () => {

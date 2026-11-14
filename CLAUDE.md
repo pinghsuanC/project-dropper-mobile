@@ -173,3 +173,5 @@ Check the server's `/docs` page when unsure; do not guess field names.
   so don't merge PRs by hand. That auto-merge doesn't
   start another run on `main` (GitHub doesn't trigger workflows from `GITHUB_TOKEN`
   merges); the PR run already tested the merged result.
+- Don't turn on Auto-fix for CI on a PR, and don't offer to. If a check fails, report it
+  and fix it on the branch only when asked.

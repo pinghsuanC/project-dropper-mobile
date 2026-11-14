@@ -8,7 +8,8 @@ import defaultQuotes from '../../assets/quotes.json';
 
 export type Quote = { text: string };
 export type PairedPc = { pcName: string };
-export type Identity = { deviceId: string; userName: string; deviceName: string };
+/** Names can be missing: the user name is local only and optional (1010). */
+export type Identity = { deviceId: string; userName: string | null; deviceName: string | null };
 
 type SessionState = {
   deviceId: string | null;

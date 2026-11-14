@@ -1,6 +1,6 @@
 # 1010: App state and session
 
-Accepted, part 1 implemented, part 2 next · updated 2026-11-14 · Part of [1000 App](1000-app.md)
+Accepted, implemented · updated 2026-11-14 · Part of [1000 App](1000-app.md)
 
 Two places only: **storage** (survives closing the app) and the **session** (memory, one
 global Zustand store, [1030](1030-session-store.md)). Screens never look things up
@@ -15,17 +15,19 @@ written only through `lib/storage.ts`. Storage keys are in `config.ts`.
 |---|---|---|
 | Private key | First launch (Register) | Only read to sign; **never copied into the session**, logged or sent |
 | `device_id` | After `POST /auth/register` | Read once at start, copied into the session |
-| User name, device name | On Register | Local only, the server doesn't store them. Read once at start, copied into the session |
+| User name | On Register | **Local only**: never sent to the server. May be missing (`null`). Read once at start, copied into the session |
+| Device name | On Register | Sent to the server as `name` on register (`/auth/me` returns it). Read once at start, copied into the session |
 
 `getDevice()` returns `{ deviceId, userName, deviceName }`, or `null` when there's no
-`device_id`. `saveDevice()` / `clearDevice()` serve Register and unregister. There is
-**no** storage function for the session token.
+`device_id`. `saveDevice()` / `clearDevice()` serve Register and unregister; deleting just
+the `device_id` serves the missing-key case below. There is **no** storage function for the
+session token.
 
 ## Lives in session
 
 | Item | Set by | Notes |
 |---|---|---|
-| `deviceId`, `userName`, `deviceName` | Start-up | Copies of the stored values (`setIdentity`) |
+| `deviceId`, `userName`, `deviceName` | Start-up | Copies of the stored values (`setIdentity`); `deviceName` then replaced by `/auth/me`'s `name` |
 | Session token | Login (challenge → sign → verify) | **Never stored or logged**; every app start logs in again. `api/client.ts` reads it with `getSession()`; screens never pass it |
 | `pairedWith` (PC name, or none) | Start-up, and after pairing | Not stored, so it can't go stale. Stays `null` until `GET /devices/paired` exists |
 | Daily quote | Start-up | Home bubble. No server route yet: the local default from `assets/quotes.json` |
@@ -37,23 +39,39 @@ written only through `lib/storage.ts`. Storage keys are in `config.ts`.
 ```
 getDevice() → session (read once)
  ├─ no device_id ───────────────────────────────────→ Not registered → Register
- └─ device_id
+ ├─ device_id, no private key → new key pair saved, device_id deleted
+ │                                                  → Not registered → Register
+ └─ device_id + key
      POST /auth/challenge
-     ├─ network error / timeout ───────────────────→ Server unreachable (Retry → start again)
-     ├─ 404 → re-register ONCE with the stored key and names, save the new device_id,
-     │        retry login; a second 404 or failure ─→ Not registered → Register
-     ├─ 403 revoked ────────────────────────────────→ Not registered → Register
+     ├─ 404 → re-register ONCE (stored device name, stored key), save the new device_id,
+     │        retry login; a second 404 or a 4xx ──→ Not registered → Register
+     ├─ any other 4xx (403 revoked, 422, …) ────────→ Not registered → Register
      └─ challenge → sign → POST /auth/verify-challenge
-         ├─ 401 or 403 ─────────────────────────────→ Not registered → Register
-         └─ token → setToken
-             ├─ quote: local default; pairedWith: null (no routes yet)
-             └─ Welcome back → Home
+         ├─ any 4xx (401, 403, …) ──────────────────→ Not registered → Register
+         └─ token → setToken → GET /auth/me (checks the session)
+             ├─ any 4xx ─────────────── clear token → Not registered → Register
+             └─ name → session deviceName
+                 ├─ quote: local default; pairedWith: null (no routes yet)
+                 └─ Welcome back → Home
+
+On any call: network error, timeout, 5xx, or no server URL configured
+                                                    → Server unreachable (Retry → start again)
 ```
 
-- **Unreachable** = a network error or timeout on `/auth/challenge`. No separate
-  `GET /health` call.
-- **Re-register** needs the stored user and device names; if either is missing, go to
-  Register instead.
+- **Unreachable** = no usable answer from the server: a network error, timeout or 5xx on
+  any call, or a missing `EXPO_PUBLIC_API_BASE_URL`. A 5xx is "unreachable" because
+  registering again can't fix a broken server. No separate `GET /health` call.
+- **Re-register** sends the stored device name as `name`; the user name isn't needed (the
+  server never gets it). No stored device name → Register instead.
+- **Missing private key** with a `device_id`: the old identity can't sign any more, so make
+  and save a new key, delete only the `device_id` (names stay), and go to Register.
+- **`/auth/me` after login** (also after a re-register's login) confirms the new token
+  works before Landing says Welcome, and gives the server's device `name`. That name goes
+  into the session only; storage keeps its own copy for re-registering, when there's no
+  token to call `/auth/me` with. Later 401 / 403 (24 h expiry, revocation) still surface
+  on whichever protected call hits them.
+- **Missing user name** is fine everywhere: the session holds `null` (so `setIdentity`
+  takes nullable names) and Welcome uses its no-name message.
 - **Popups:** "Welcome back <name>, redirecting.." when a user name is stored, otherwise
   "Welcome back, redirecting.." (two strings, nothing joined). The Welcome and Not
   registered popups stay **2 seconds**, then `router.replace(...)` so Back can't return to
