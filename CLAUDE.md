@@ -151,7 +151,8 @@ Check the server's `/docs` page when unsure; do not guess field names.
   Claude Code" line.
 - Changes reach `main` through a PR. Never force-push.
 - CI (`.github/workflows/ci.yml`) runs lint, type check and unit tests on every PR into
-  `main` and every push to `main`. A same-repo, non-draft PR is squash-merged and its
-  branch deleted once all three pass, so don't merge PRs by hand. That auto-merge doesn't
+  `main` or a `feature-branch-*` middle branch, and every push to `main`. A same-repo,
+  non-draft PR is squash-merged into its base and its branch deleted once all three pass,
+  so don't merge PRs by hand. That auto-merge doesn't
   start another run on `main` (GitHub doesn't trigger workflows from `GITHUB_TOKEN`
   merges); the PR run already tested the merged result.
