@@ -1,10 +1,11 @@
-# Lint, type check and unit tests on every PR into main and every push to main.
-# PRs from this repo (not drafts) are squash-merged once all three pass.
+# Lint, type check and unit tests on every PR into main or a feature-branch-* middle
+# branch, and every push to main. PRs from this repo (not drafts) are squash-merged into
+# their base once all three pass.
 name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'feature-branch-*']
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
