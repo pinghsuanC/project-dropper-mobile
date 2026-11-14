@@ -51,7 +51,8 @@ type Session = {
 };
 ```
 
-A React Context is enough; switch to a small store (e.g. Zustand) only if re-renders hurt.
+~~A React Context is enough; switch to a small store (e.g. Zustand) only if re-renders hurt.~~
+**Replaced by [1030](1030-session-store.md):** the session is a global Zustand store.
 `api/client.ts` reads the token from the session; screens never pass it.
 
 ## Plan (tests first)

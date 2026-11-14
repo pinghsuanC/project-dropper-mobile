@@ -1,24 +1,15 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { Placeholder } from '@/components/Placeholder';
+import { strings } from '@/constants/strings';
 
-export default function Home() {
+// Landing: later runs the start-up order (1010) and moves on with router.replace.
+export default function Landing() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Project Dropper Mobile</Text>
-      <StatusBar style="auto" />
-    </View>
+    <Placeholder
+      title={strings.landing.title}
+      links={[
+        { label: strings.landing.toHome, href: '/home' },
+        { label: strings.landing.toRegister, href: '/register' },
+      ]}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-});
