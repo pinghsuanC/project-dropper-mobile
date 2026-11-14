@@ -23,10 +23,24 @@ async function pressLink(name: string) {
 const propertiesLink = () => screen.queryByRole('link', { name: strings.taskbar.properties });
 
 describe('Landing', () => {
-  test('the app opens on Landing', async () => {
+  test('the app opens on Landing: the DROPPER.EXE terminal', async () => {
     await openAt('/');
     expect(screen).toHavePathname('/');
-    expect(screen.getByRole('header', { name: strings.landing.title })).toBeTruthy();
+    expect(screen.getByText(strings.ui.terminalTitle)).toBeTruthy();
+    expect(screen.getByText(strings.landing.connecting)).toBeTruthy();
+  });
+
+  test('previews the "Not registered" popup (static: no redirect)', async () => {
+    jest.useFakeTimers();
+    try {
+      await openAt('/');
+      expect(screen.getByText(strings.landing.notRegisteredTitle)).toBeTruthy();
+      expect(screen.getByText(strings.landing.notRegistered)).toBeTruthy();
+      jest.advanceTimersByTime(5000);
+      expect(screen).toHavePathname('/');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test('goes to Home', async () => {

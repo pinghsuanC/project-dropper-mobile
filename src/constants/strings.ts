@@ -1,9 +1,22 @@
 // All user-facing text, grouped by screen. Text with values in it is a function.
-// The screens are placeholders for now: titles and the buttons between them.
 
 export const strings = {
+  /** Text inside the shared UI components (src/components/ui/). */
+  ui: {
+    gifPlaceholder: 'GIF',
+    terminalTitle: 'DROPPER.EXE',
+    terminalCursor: '_',
+    /** Title-bar buttons' accessibility labels (the pictograms are drawn, not text). */
+    titleBar: {
+      minimize: 'Minimize',
+      maximize: 'Maximize',
+      close: 'Close',
+    },
+  },
   landing: {
-    title: 'Landing',
+    connecting: 'Trying to connect ...',
+    notRegisteredTitle: 'Not registered',
+    notRegistered: 'You are not welcomed yet. Redirecting you to register...',
     toHome: 'Go to Home',
     toRegister: 'Go to Register',
   },

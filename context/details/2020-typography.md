@@ -1,6 +1,6 @@
 # 2020: Typography
 
-Accepted, not implemented · 2026-11-12 (fonts picked 2026-11-13) · [index](README.md)
+Accepted, implemented · 2026-11-12 (fonts picked 2026-11-13, built 2026-11-14) · [index](README.md)
 
 Text is styled by **role** (what it's for), never per screen. Colour is a separate
 **tone** that combines with any role.
@@ -17,7 +17,8 @@ Text is styled by **role** (what it's for), never per screen. Colour is a separa
 | `mono` | Technical values: device ID, server address, checksums | 12 | regular | Courier Prime |
 | `terminal` | DROPPER.EXE terminal | 20 | regular | VT323 |
 
-**Tones:** `normal` · `muted` · `success` · `error` · `disabled` (colours in
+**Tones:** `normal` · `muted` · `success` · `error` · `disabled` · `inverse` (white, on the
+title bar) · `terminal` (terminal text), added 2026-11-14 (colours in
 [2030](2030-colors.md#text-tones)). E.g. an error message is `body` + `error`.
 
 ## Fonts (all SIL OFL 1.1, free to bundle)
@@ -43,6 +44,17 @@ CJK fonts are 5–20 MB each, so only if Chinese UI or names are common.
 
 Ship each font's licence (the `@expo-google-fonts` packages include it); credit them
 under About in Properties later.
+
+## As built (2026-11-14)
+
+- `theme.ts` `fonts`: `chrome`, `message`, `messageBold` (Atkinson Hyperlegible 700, used by
+  `bold`; Android doesn't fake bold for custom fonts), `mono`, `terminal`. Values are the
+  family names registered by `useFonts` (e.g. `Silkscreen_400Regular`).
+- `bold` only changes the message font (body, label, caption); Silkscreen has no bold.
+- `maxFontSizeMultiplier` = 1.5 on all text.
+- `disabled` shadow: 1px down/right, white, radius 0.01 (Android draws nothing at 0).
+- If a font fails to load, the app carries on with system fonts instead of hanging on the
+  splash screen.
 
 ## Rules
 

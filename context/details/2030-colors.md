@@ -1,6 +1,6 @@
 # 2030: Colour palette
 
-Accepted, not implemented · 2026-11-12 · [index](README.md)
+Accepted, implemented · 2026-11-12 (built 2026-11-14; icons not yet) · [index](README.md)
 
 One fixed light palette, defined only in `theme.ts` and used **by name**, never by hex.
 No dark mode (`app.json`: `userInterfaceStyle: "light"`).
@@ -52,6 +52,13 @@ white only (~5.1:1), or darken it to ~`#005000` on grey. `error` on grey just pa
 
 Other icons are one-colour line drawings in the current text colour (so they grey out
 with a disabled button). No emoji icons: they look different on every phone.
+
+## As built (2026-11-14)
+
+- `theme.ts` `colors` has every name above, plus `disabledShadow` (`#ffffff`) for the
+  disabled tone's shadow. `devColors` is separate.
+- `app.json` `userInterfaceStyle: "light"` is set.
+- Still open: the `success` green (plan step 3), and the icon colours (with `Icon`).
 
 ## Testing menu only
 

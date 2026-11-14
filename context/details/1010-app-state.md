@@ -55,6 +55,23 @@ type Session = {
 **Replaced by [1030](1030-session-store.md):** the session is a global Zustand store.
 `api/client.ts` reads the token from the session; screens never pass it.
 
+## First Landing flow (decided 2026-11-13, not built yet)
+
+A first step towards the start-up order above, before login exists:
+
+- The device record (`device_id`, user name, device name) is in `expo-secure-store`, read
+  only through `lib/storage.ts`: `getDevice()` returns the values, or `null` when there's no
+  `device_id`; `saveDevice()` / `clearDevice()` for Register and unregister. Storage keys in
+  `config.ts`.
+- No `device_id` → "Not registered" popup → `router.replace('/register')`.
+- `device_id` found → identity into the session → "Welcome back" popup →
+  `router.replace('/home')`. **No server call yet** (no `/health`, no login).
+- Welcome message: "Welcome back <name>, redirecting.." only when a name is stored;
+  otherwise "Welcome back, redirecting..", with no name joined on.
+- Redirect delay: **1 second**, in `config.ts`.
+- Still open: a dev-only way to save a test device ID, to see "Welcome back" on the phone
+  before Register exists.
+
 ## Plan (tests first)
 
 1. Tests: `device_id` read once; token never written to storage; picks stable on re-read.

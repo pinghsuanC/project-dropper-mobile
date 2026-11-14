@@ -62,24 +62,41 @@ The app reads the server URL from `EXPO_PUBLIC_API_BASE_URL` (in `.env`), only i
 1. **Device identity**: on first launch, generate an Ed25519 key pair. The private key is stored
    ONLY in `expo-secure-store`. Device fingerprint = SHA-256 hex of the Android ID (`expo-application`).
 2. **Register**: `POST /auth/register` → save `device_id` in secure storage.
-3. **Login**: `POST /auth/challenge` → sign → `POST /auth/verify_challenge` → session token (kept in memory).
+3. **Login**: `POST /auth/challenge` → sign → `POST /auth/verify-challenge` → session token (kept in memory).
    If `/auth/challenge` returns 404, the server forgot this device: re-register ONCE, then retry.
 4. **Pairing** (M7): scan the desktop's QR (pairing code + server URL) → claim it on the server.
 5. **Send a file**: pick file → `POST /files/prepare-upload` → PUT bytes to `upload_url` → `POST /files/finish-upload`.
 
 ## Server API contract (must match exactly)
 
-All responses use the envelope `{ "message": string, "data": ... }`. Errors are `{ "detail": ... }`.
-Protected routes need `Authorization: Bearer <session_token>`.
+**Read the server repo's `API.md` first** (`../file-dropper/API.md`, i.e.
+`A:/Coding/file-dropper/API.md`). It lists every current endpoint with its request,
+response, error codes and status (✅ built · 🚧 planned). Check it before any work that
+calls the server, and to see which routes exist yet. When it and the table below
+disagree, `API.md` wins; when `API.md` and the server's `/docs` page disagree, `/docs` wins.
 
-| Route | Body | Returns `data` |
-|---|---|---|
-| `POST /auth/register` | `name, platform ("android"), public_key, fingerprint` | `{ device_id }` (409 = key already registered) |
-| `POST /auth/challenge` | `device_id` | `{ challenge }` (404 = unknown device) |
-| `POST /auth/verify_challenge` | `device_id, challenge, signature` | `{ token }` (401 = invalid) |
-| `GET /auth/me` | — | `{ device_id, name, platform }` |
-| `POST /files/prepare-upload` | `file_name, size, content_type, checksum, receiver_id` | `{ file_id, upload_url }` |
-| `POST /files/finish-upload` | `file_id` | `{ file_id }` (409 = upload missing/incomplete) |
+All responses use the envelope `{ "message": string, "data": ... }`. Errors are `{ "detail": ... }`;
+a 422 is a list (`{ "detail": [{ "loc", "msg", "type" }] }`). Protected routes need
+`Authorization: Bearer <session_token>`; never send it to R2 (`upload_url`).
+
+Built routes the phone uses (from `API.md`, 2026-11-13). Every route can also return 422.
+Protected routes can also return 401 (no or expired session) and 403 (device revoked).
+
+| Route | Auth | Body | Returns `data` | Errors |
+|---|---|---|---|---|
+| `GET /health` | — | — | `{ "status": "ok" }` (no envelope) | — |
+| `POST /auth/register` → 201 | — | `name, platform ("android"), public_key, fingerprint` | `{ device_id }` | 400 bad / non-Ed25519 key · 409 key already registered |
+| `POST /auth/challenge` | — | `device_id` | `{ challenge }` | 404 unknown device (re-register once) · 403 revoked |
+| `POST /auth/verify-challenge` | — | `device_id, challenge, signature` | `{ token }` | 401 any failure · 403 revoked |
+| `GET /auth/me` | ✓ | — | `{ device_id, name, platform }` | |
+| `POST /files/prepare-upload` → 201 | ✓ | `file_name, size, content_type, checksum, receiver_id` | `{ file_id, upload_url }` | 404 receiver unknown / revoked |
+| `POST /files/finish-upload` | ✓ | `file_id` | `{ file_id }` | 404 not found / not yours · 409 not `pending`, or upload missing / wrong size |
+| `POST /files/prepare-batch-upload` → 201 | ✓ | `receiver_id, files: [{ client_ref, file_name, size, content_type, checksum }]` | `{ files: [{ client_ref, file_id, upload_url }] }` | 404 receiver unknown / revoked |
+| `POST /files/finish-batch-upload` | ✓ | `file_ids` | `{ file_ids }` | 404 some ids not found / not yours / not `pending` · 409 an upload missing / wrong size (none marked) |
+
+Not built yet (🚧 in `API.md`): pairing (`/pair/*`, `GET /devices/paired`),
+`POST /auth/unregister`, `GET /files/sent`, `POST /files/cancel`, `welcome_gif` in
+`/auth/me`, and a pairing code on register (M7). No GIF or quote routes.
 
 Field names are snake_case and must match the server's Pydantic models — a mismatch is a 422.
 Check the server's `/docs` page when unsure; do not guess field names.
