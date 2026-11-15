@@ -63,6 +63,8 @@ export const strings = {
     footer: 'Tap the yellow DEV button on any screen to come back here.',
     button: 'DEV',
     buttonLabel: 'Open testing menu',
+    /** Shown on a placeholder screen opened in a test state from the menu. */
+    stateLine: (state: string) => `Test state: ${state}`,
     sections: {
       landing: 'Landing',
       register: 'Register',

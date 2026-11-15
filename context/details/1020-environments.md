@@ -45,9 +45,22 @@ export const SHOW_TESTING_MENU = APP_ENV !== 'prod';
   it just leads to Landing.
 - **Entries** are `DEV_ROUTES` in `src/components/dev/devRoutes.ts`, in the prototype's
   sections and order. An entry for a screen state passes a `state` search param with a
-  camelCase value, e.g. `{ pathname: '/register', params: { state: 'serverError' } }`.
-  Screens ignore it until they're built; a screen that reads it must check it against its
-  own list of states and ignore anything else.
+  camelCase value, e.g. `{ pathname: '/register', params: { state: RegisterState.SERVER_ERROR } }`.
+- **Screen states** (built 2026-11-14) are in `src/constants/screenStates.ts`: one
+  `as const` object plus a union type of the same name per screen (`RegisterState`,
+  `HomeState`, …, the [1040](1040-enums.md) shape). `DEV_ROUTES` builds its params from
+  them, and `devRoutes.test.ts` checks both ways: every entry's state is on its screen's
+  list, and every listed state has an entry.
+- **Screens read it with `useScreenState(<Screen>State)`** (`src/lib/screenState.ts`). It
+  returns one of that screen's values, or `undefined` for a missing, unknown, wrong-case
+  or array value, or another screen's state. The pure check is `parseScreenState`.
+  **Always `undefined` in `prod`** (`SHOW_TESTING_MENU` false), so no deep link can put a
+  release build in a test state.
+- A state only changes what the screen shows: never the session store, secure storage or
+  the server. Until a screen is built, its `Placeholder` shows the state as one line
+  (`strings.dev.stateLine`); each screen's own feature replaces that with the real view.
+- Jest has no `APP_ENV`, so `config.ts` is `prod` in tests: tests that need a state mock
+  `SHOW_TESTING_MENU` (below).
 - **Landing has one entry and no states:** it always runs the real start-up from the menu.
   Its Success / Failed / Server unreachable come from the real server (the prototype's
   three extra Landing buttons were dropped).

@@ -1,6 +1,16 @@
 // The testing menu's list (context/details/1020, prototype context/prototypes/dev/dev-menu.png).
 import type { Href } from 'expo-router';
 
+import {
+  HomeState,
+  PairingScanState,
+  PairingWaitState,
+  PropertiesState,
+  RegisterState,
+  ServerFilesState,
+  ShareState,
+  UploadState,
+} from '@/constants/screenStates';
 import { strings } from '@/constants/strings';
 
 import { DEV_ROUTES } from './devRoutes';
@@ -72,4 +82,31 @@ test('Landing is never sent a state: it always runs the real start-up', () => {
   const landing = allEntries().filter((e) => pathOf(e.href) === '/');
   expect(landing).toHaveLength(1);
   expect(stateOf(landing[0].href)).toBeUndefined();
+});
+
+/** Each screen's state list (src/constants/screenStates.ts). Landing has none. */
+const STATES_BY_PATH: Record<string, Record<string, string>> = {
+  '/': {},
+  '/register': RegisterState,
+  '/home': HomeState,
+  '/pairing/scan': PairingScanState,
+  '/pairing/wait': PairingWaitState,
+  '/server-files': ServerFilesState,
+  '/upload': UploadState,
+  '/share': ShareState,
+  '/properties': PropertiesState,
+};
+
+test("every entry's state is on its screen's list", () => {
+  for (const { href } of allEntries()) {
+    const state = stateOf(href);
+    if (state !== undefined) expect(Object.values(STATES_BY_PATH[pathOf(href)])).toContain(state);
+  }
+});
+
+test("every state on a screen's list has a menu entry", () => {
+  const keys = allEntries().map((e) => `${pathOf(e.href)}?${stateOf(e.href) ?? ''}`);
+  for (const [path, states] of Object.entries(STATES_BY_PATH)) {
+    for (const state of Object.values(states)) expect(keys).toContain(`${path}?${state}`);
+  }
 });
