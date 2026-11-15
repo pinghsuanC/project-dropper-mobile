@@ -2,8 +2,8 @@
 
 ## Scope
 
-- Feature: Routes and basic pages
-- Feature branch: feature-branch-routes-and-basic-pages
+- Feature: 
+- Feature branch: 
 - Parts: [current-feature-parts.md](current-feature-parts.md)
 
 ## Current part
@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-15: Routes and basic pages: a route for every screen, the Windows 98 theme and first UI components, log-in at start-up, and a dev testing menu that opens any screen state
 - 2026-11-14: Screens read the testing menu's state through one typed hook and show it; release builds ignore it
 - 2026-11-14: Add a dev-only testing menu at /dev and a floating DEV button that opens it from any screen
 - 2026-11-14: Log in on every launch from Landing and go to Home, Register, or a Retry popup
