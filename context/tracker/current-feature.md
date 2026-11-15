@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-14: Screens read the testing menu's state through one typed hook and show it; release builds ignore it
 - 2026-11-14: Add a dev-only testing menu at /dev and a floating DEV button that opens it from any screen
 - 2026-11-14: Log in on every launch from Landing and go to Home, Register, or a Retry popup
 - 2026-11-14: Add secure storage, device key signing and the server client that start-up login will use
