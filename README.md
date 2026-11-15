@@ -41,7 +41,7 @@ Public key format: your server expects a PEM (SubjectPublicKeyInfo). Noble gives
 3. Register + login
 
 /auth/register (platform: "android") → save device_id
-challenge → sign challenge as UTF-8 bytes → /auth/verify_challenge → token
+challenge → sign challenge as UTF-8 bytes → /auth/verify-challenge → token
 /auth/me shows “Logged in as Pixel …”
 
 4. Send a file

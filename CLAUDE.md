@@ -18,20 +18,26 @@ Related material lives under `context/`:
   lists them. Read the relevant one before changing those areas.
   **New design or architecture decisions go there** as a new numbered record (and a row
   in its `README.md`), not into this file. This file keeps only rules and pointers.
-- `context/tracker/current-feature.md`: the feature being worked on now (status, branch,
-  implementation details) and the history of finished features. Managed by the
-  `/current-feature` skill; don't edit it by hand during a feature. Its `# Future Features`
-  section is the planned-features list: change it only when the user asks, through
-  `/current-feature future`.
+- `context/tracker/current-feature.md`: the feature being worked on now (its `## Scope`:
+  name and feature branch), the current part (status, branch, implementation details) and
+  the history. `context/tracker/current-feature-parts.md` holds the feature's parts still
+  to do and done. Both are managed by the `/current-feature` skill; don't edit them by hand
+  during a feature. The tracker's `# Future Features` section is the planned-features list:
+  change it only when the user asks, through `/current-feature future`.
 
 ## Skills
 
-- `/current-feature load [prompt-file | description]`: plan a feature into the tracker.
-- `/current-feature start`: create the feature branch, write tests first, implement.
+- `/current-feature load [prompt-file | description]`: plan the next part of a feature into
+  the tracker (or the next stored part, with no input); a large feature is split into parts
+  with a `feature-branch-*` branch.
+- `/current-feature start`: create the part branch from the feature branch (or `main`),
+  write tests first, implement.
 - `/current-feature review`: run checks, show coverage, review scope, quality, reusability
   and exposed env variables. Read-only.
-- `/current-feature complete`: update the tracker history, make the feature's single commit
-  (after approval), push and open a PR into `main`.
+- `/current-feature complete-part`: make the part's single commit (after approval), push
+  and open a PR into the feature branch. The scope stays.
+- `/current-feature complete`: wrap up the whole feature (after approval) and open a PR
+  from the feature branch into `main` (or, for a single-part feature, from its branch).
 - `/current-feature future <description>`: append planned features to the tracker's
   `# Future Features` section.
 - `/code-reviewer [path | --changed]`: read-only report of exposed secrets, unused code,
@@ -62,24 +68,41 @@ The app reads the server URL from `EXPO_PUBLIC_API_BASE_URL` (in `.env`), only i
 1. **Device identity**: on first launch, generate an Ed25519 key pair. The private key is stored
    ONLY in `expo-secure-store`. Device fingerprint = SHA-256 hex of the Android ID (`expo-application`).
 2. **Register**: `POST /auth/register` → save `device_id` in secure storage.
-3. **Login**: `POST /auth/challenge` → sign → `POST /auth/verify_challenge` → session token (kept in memory).
+3. **Login**: `POST /auth/challenge` → sign → `POST /auth/verify-challenge` → session token (kept in memory).
    If `/auth/challenge` returns 404, the server forgot this device: re-register ONCE, then retry.
 4. **Pairing** (M7): scan the desktop's QR (pairing code + server URL) → claim it on the server.
 5. **Send a file**: pick file → `POST /files/prepare-upload` → PUT bytes to `upload_url` → `POST /files/finish-upload`.
 
 ## Server API contract (must match exactly)
 
-All responses use the envelope `{ "message": string, "data": ... }`. Errors are `{ "detail": ... }`.
-Protected routes need `Authorization: Bearer <session_token>`.
+**Read the server repo's `API.md` first** (`../file-dropper/API.md`, i.e.
+`A:/Coding/file-dropper/API.md`). It lists every current endpoint with its request,
+response, error codes and status (✅ built · 🚧 planned). Check it before any work that
+calls the server, and to see which routes exist yet. When it and the table below
+disagree, `API.md` wins; when `API.md` and the server's `/docs` page disagree, `/docs` wins.
 
-| Route | Body | Returns `data` |
-|---|---|---|
-| `POST /auth/register` | `name, platform ("android"), public_key, fingerprint` | `{ device_id }` (409 = key already registered) |
-| `POST /auth/challenge` | `device_id` | `{ challenge }` (404 = unknown device) |
-| `POST /auth/verify_challenge` | `device_id, challenge, signature` | `{ token }` (401 = invalid) |
-| `GET /auth/me` | — | `{ device_id, name, platform }` |
-| `POST /files/prepare-upload` | `file_name, size, content_type, checksum, receiver_id` | `{ file_id, upload_url }` |
-| `POST /files/finish-upload` | `file_id` | `{ file_id }` (409 = upload missing/incomplete) |
+All responses use the envelope `{ "message": string, "data": ... }`. Errors are `{ "detail": ... }`;
+a 422 is a list (`{ "detail": [{ "loc", "msg", "type" }] }`). Protected routes need
+`Authorization: Bearer <session_token>`; never send it to R2 (`upload_url`).
+
+Built routes the phone uses (from `API.md`, 2026-11-13). Every route can also return 422.
+Protected routes can also return 401 (no or expired session) and 403 (device revoked).
+
+| Route | Auth | Body | Returns `data` | Errors |
+|---|---|---|---|---|
+| `GET /health` | — | — | `{ "status": "ok" }` (no envelope) | — |
+| `POST /auth/register` → 201 | — | `name, platform ("android"), public_key, fingerprint` | `{ device_id }` | 400 bad / non-Ed25519 key · 409 key already registered |
+| `POST /auth/challenge` | — | `device_id` | `{ challenge }` | 404 unknown device (re-register once) · 403 revoked |
+| `POST /auth/verify-challenge` | — | `device_id, challenge, signature` | `{ token }` | 401 any failure · 403 revoked |
+| `GET /auth/me` | ✓ | — | `{ device_id, name, platform }` | |
+| `POST /files/prepare-upload` → 201 | ✓ | `file_name, size, content_type, checksum, receiver_id` | `{ file_id, upload_url }` | 404 receiver unknown / revoked |
+| `POST /files/finish-upload` | ✓ | `file_id` | `{ file_id }` | 404 not found / not yours · 409 not `pending`, or upload missing / wrong size |
+| `POST /files/prepare-batch-upload` → 201 | ✓ | `receiver_id, files: [{ client_ref, file_name, size, content_type, checksum }]` | `{ files: [{ client_ref, file_id, upload_url }] }` | 404 receiver unknown / revoked |
+| `POST /files/finish-batch-upload` | ✓ | `file_ids` | `{ file_ids }` | 404 some ids not found / not yours / not `pending` · 409 an upload missing / wrong size (none marked) |
+
+Not built yet (🚧 in `API.md`): pairing (`/pair/*`, `GET /devices/paired`),
+`POST /auth/unregister`, `GET /files/sent`, `POST /files/cancel`, `welcome_gif` in
+`/auth/me`, and a pairing code on register (M7). No GIF or quote routes.
 
 Field names are snake_case and must match the server's Pydantic models — a mismatch is a 422.
 Check the server's `/docs` page when unsure; do not guess field names.
@@ -125,6 +148,9 @@ Check the server's `/docs` page when unsure; do not guess field names.
 
 - Config values (API paths, timeouts, size limits, retry counts, storage keys) go in
   `src/constants/config.ts`. It's also the only file that reads `process.env`.
+- Server enums (`server/enums.py`: statuses, platforms) are mirrored in
+  `src/constants/enums.ts` as `as const` objects + union types, never TypeScript `enum`
+  (see `context/details/1040`).
 - All user-facing text goes in `src/constants/strings.ts`, grouped by screen, for later
   translation. Text with values in it is a function, e.g. `sent: (fileName) => ...`, never
   joined from pieces.
@@ -143,15 +169,20 @@ Check the server's `/docs` page when unsure; do not guess field names.
 
 ## Git workflow
 
-- Work on `feature/<name>` branches created by `/current-feature start`; don't commit to
-  `main` directly.
-- One commit per feature, made by `/current-feature complete`, with a plain-English subject
-  under 60 characters.
+- Work on `feature/<name>` part branches created by `/current-feature start`. A feature
+  split into parts collects them on its `feature-branch-<name>` branch (named in the
+  tracker's `## Scope`) until `/current-feature complete` merges it into `main`. Don't
+  commit to `main` directly.
+- One commit per part, made by `/current-feature complete-part` (or `complete` for a
+  single-part feature), with a plain-English subject under 60 characters.
 - No attribution in commits or PRs: no `Co-Authored-By` trailer, no "Generated with
   Claude Code" line.
 - Changes reach `main` through a PR. Never force-push.
 - CI (`.github/workflows/ci.yml`) runs lint, type check and unit tests on every PR into
-  `main` and every push to `main`. A same-repo, non-draft PR is squash-merged and its
-  branch deleted once all three pass, so don't merge PRs by hand. That auto-merge doesn't
+  `main` or a `feature-branch-*` middle branch, and every push to `main`. A same-repo,
+  non-draft PR is squash-merged into its base and its branch deleted once all three pass,
+  so don't merge PRs by hand. That auto-merge doesn't
   start another run on `main` (GitHub doesn't trigger workflows from `GITHUB_TOKEN`
   merges); the PR run already tested the merged result.
+- Don't turn on Auto-fix for CI on a PR, and don't offer to. If a check fails, report it
+  and fix it on the branch only when asked.

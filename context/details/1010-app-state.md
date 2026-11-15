@@ -1,63 +1,107 @@
 # 1010: App state and session
 
-Accepted, not implemented · 2026-11-12 · Part of [1000 App](1000-app.md)
+Accepted, implemented · updated 2026-11-14 · Part of [1000 App](1000-app.md)
 
 Two places only: **storage** (survives closing the app) and the **session** (memory, one
-object every screen reads via `useSession()`). Screens never look things up themselves.
+global Zustand store, [1030](1030-session-store.md)). Screens never look things up
+themselves: they read the session with `useSession(selector)`.
 
 ## Lives in storage
 
-| Item | Where | Written | Notes |
-|---|---|---|---|
-| Private key | `expo-secure-store` | First launch | Only read to sign; **never copied into the session**, logged or sent |
-| `device_id` | `expo-secure-store` | After `POST /auth/register` | Read once at start, copied into the session |
-| User name, device name | Device storage | On Register | Read once at start, copied into the session; local only |
+Everything is in `expo-secure-store` (an encrypted key-value store on the phone), read and
+written only through `lib/storage.ts`. Storage keys are in `config.ts`.
+
+| Item | Written | Notes |
+|---|---|---|
+| Private key | First launch (Register) | Only read to sign; **never copied into the session**, logged or sent |
+| `device_id` | After `POST /auth/register` | Read once at start, copied into the session |
+| User name | On Register | **Local only**: never sent to the server. May be missing (`null`). Read once at start, copied into the session |
+| Device name | On Register | Sent to the server as `name` on register (`/auth/me` returns it). Read once at start, copied into the session |
+
+`getDevice()` returns `{ deviceId, userName, deviceName }`, or `null` when there's no
+`device_id`. `saveDevice()` / `clearDevice()` serve Register and unregister; deleting just
+the `device_id` serves the missing-key case below. There is **no** storage function for the
+session token.
 
 ## Lives in session
 
 | Item | Set by | Notes |
 |---|---|---|
-| `device_id`, user name, device name | Start-up | Copies of the stored values |
-| Session token | Login (challenge → sign → verify) | **Never stored or logged**; every app start logs in again |
-| `pairedWith` (PC name, or none) | Start-up, and after pairing | Not stored, so it can't go stale |
-| Daily quote | Start-up, fetched once | Home bubble; built-in default if the request fails |
-| GIF picks | Start-up, once | How they work: [2040](2040-gifs.md) |
-| Upload queue | Upload screen | Sent files leave the queue as soon as they're done (they're on the Server page). On leaving `/upload`, failed files are dropped; only in-progress and waiting files are kept. Not kept across app restarts |
+| `deviceId`, `userName`, `deviceName` | Start-up | Copies of the stored values (`setIdentity`); `deviceName` then replaced by `/auth/me`'s `name` |
+| Session token | Login (challenge → sign → verify) | **Never stored or logged**; every app start logs in again. `api/client.ts` reads it with `getSession()`; screens never pass it |
+| `pairedWith` (PC name, or none) | Start-up, and after pairing | Not stored, so it can't go stale. Stays `null` until `GET /devices/paired` exists |
+| Daily quote | Start-up | Home bubble. No server route yet: the local default from `assets/quotes.json` |
+| GIF picks | Start-up, once | Added with its feature: [2040](2040-gifs.md) |
+| Upload queue | Upload screen | Added with its feature. Sent files leave the queue as soon as they're done (they're on the Server page). On leaving `/upload`, failed files are dropped; only in-progress and waiting files are kept. Not kept across app restarts |
 
 ## Start-up (what Landing does)
 
 ```
-read device_id, names from storage → session
- ├─ no device_id ──────────────────────────────→ Landing – failed → Register
- └─ device_id
-     ├─ server unreachable ────────────────────→ Landing – server unreachable (Retry)
-     ├─ login fails (401, or 404 after one re-register) → Landing – failed → Register
-     └─ login OK → token
-         ├─ GIFs, daily quote (server, or local fallback)
-         ├─ pairedWith
-         └─ Landing – success → Home (paired / unpaired)
+getDevice() → session (read once)
+ ├─ no device_id ───────────────────────────────────→ Not registered → Register
+ ├─ device_id, no private key → new key pair saved, device_id deleted
+ │                                                  → Not registered → Register
+ └─ device_id + key
+     POST /auth/challenge
+     ├─ 404 → re-register ONCE (stored device name, stored key), save the new device_id,
+     │        retry login; a second 404 or a 4xx ──→ Not registered → Register
+     ├─ any other 4xx (403 revoked, 422, …) ────────→ Not registered → Register
+     └─ challenge → sign → POST /auth/verify-challenge
+         ├─ any 4xx (401, 403, …) ──────────────────→ Not registered → Register
+         └─ token → setToken → GET /auth/me (checks the session)
+             ├─ any 4xx ─────────────── clear token → Not registered → Register
+             └─ name → session deviceName
+                 ├─ quote: local default; pairedWith: null (no routes yet)
+                 └─ Welcome back → Home
+
+On any call: network error, timeout, 5xx, or no server URL configured
+                                                    → Server unreachable (Retry → start again)
 ```
 
-```ts
-type Session = {
-  deviceId: string | null;
-  userName: string | null;
-  deviceName: string | null;
-  token: string | null;                     // memory only
-  pairedWith: { pcName: string } | null;    // null = not paired
-  quote: { text: string };
-  gifs: Record<GifSlot, GifSource>;
-  uploadQueue: QueuedFile[];
-};
-```
+- **Unreachable** = no usable answer from the server: a network error, timeout or 5xx on
+  any call, or a missing `EXPO_PUBLIC_API_BASE_URL`. A 5xx is "unreachable" because
+  registering again can't fix a broken server. No separate `GET /health` call.
+- **Re-register** sends the stored device name as `name`; the user name isn't needed (the
+  server never gets it). No stored device name → Register instead.
+- **Missing private key** with a `device_id`: the old identity can't sign any more, so make
+  and save a new key, delete only the `device_id` (names stay), and go to Register.
+- **`/auth/me` after login** (also after a re-register's login) confirms the new token
+  works before Landing says Welcome, and gives the server's device `name`. That name goes
+  into the session only; storage keeps its own copy for re-registering, when there's no
+  token to call `/auth/me` with. Later 401 / 403 (24 h expiry, revocation) still surface
+  on whichever protected call hits them.
+- **Missing user name** is fine everywhere: the session holds `null` (so `setIdentity`
+  takes nullable names) and Welcome uses its no-name message.
+- **Popups:** "Welcome back <name>, redirecting.." when a user name is stored, otherwise
+  "Welcome back, redirecting.." (two strings, nothing joined). The Welcome and Not
+  registered popups stay **2 seconds**, then `router.replace(...)` so Back can't return to
+  Landing. The delay is a `config.ts` value.
+- The order lives in a pure `lib/startup.ts` that returns an outcome
+  (`welcome` · `notRegistered` · `unreachable`); Landing only maps outcome → popup →
+  redirect.
 
-A React Context is enough; switch to a small store (e.g. Zustand) only if re-renders hurt.
-`api/client.ts` reads the token from the session; screens never pass it.
+## Crypto
 
-## Plan (tests first)
+- Ed25519 with `@noble/ed25519`, with SHA-512 from `@noble/hashes`. Random bytes for the
+  private key come from `expo-crypto` (Hermes has no `crypto.getRandomValues` of its own).
+- Rules from CLAUDE.md "Crypto rules": PEM SubjectPublicKeyInfo public key, sign the
+  challenge string's UTF-8 bytes exactly, base64 signature, fingerprint = SHA-256 hex of
+  the Android ID (`expo-application`).
+- Everything in `lib/crypto.ts`.
 
-1. Tests: `device_id` read once; token never written to storage; picks stable on re-read.
-2. `lib/storage.ts`: `device_id` and names.
-3. `src/state/session.tsx`: `SessionProvider` + `useSession()` in `_layout.tsx`.
-4. Landing runs the start-up order.
-5. `api/client.ts` reads the token from the session.
+## Plan (tests first), in two features
+
+**Part 1: foundations, no UI**
+
+1. `npx expo install expo-secure-store expo-application expo-crypto @noble/ed25519 @noble/hashes`.
+2. `constants/config.ts` (1020: `APP_ENV`, `API_BASE_URL`, paths, timeout, storage keys,
+   redirect delay) and `.env.example`.
+3. `lib/storage.ts`: `getDevice`, `saveDevice`, `clearDevice`, private key get/save.
+4. `lib/crypto.ts`: key pair, PEM, sign, fingerprint.
+5. `api/types.ts`, `api/client.ts` (base URL, envelope, auth header from the session,
+   `ApiError`, unreachable error), `api/auth.ts` (challenge, verify, register).
+
+**Part 2: Landing start-up**
+
+6. `lib/startup.ts`: the order above.
+7. Landing: popups, Retry, 2-second redirects, strings.

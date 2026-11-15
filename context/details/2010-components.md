@@ -1,6 +1,10 @@
 # 2010: UI components
 
-Accepted, not implemented · 2026-11-12 · Part of [2000 UI](2000-ui.md)
+Accepted, partly implemented · 2026-11-12 (first components 2026-11-14) · Part of [2000 UI](2000-ui.md)
+
+**Built:** `Bevel`, `Text`, `TitleBar`, `Window`, `Button`, `Gif`, `Terminal`, `ResultPopup`,
+exported from `src/components/ui/index.ts`; `DevMenu`, `DevButton` in
+`src/components/dev/` (2026-11-14). The rest are still to build.
 
 Every component the screens are built from: layers, folders, props and states.
 
@@ -80,6 +84,50 @@ src/components/
 Shown in `local` / `dev`, hidden in `prod` ([1020](1020-environments.md)).
 **DevMenu**: `/dev` screen built from a `DEV_ROUTES` list. **DevButton**: floating yellow
 button above popups.
+
+As built (2026-11-14), details in [1020](1020-environments.md#as-built-2026-11-14):
+
+- **DevMenu**: `ScrollView` on the desktop teal; maroon `devBanner` strip with "DEV ONLY";
+  one `Window` per section (title-bar buttons all disabled); `Button`s two per row in equal
+  `flex: 1` cells, an odd last one alone on its row and full width; `minHeight:
+  sizes.devMenuButtonHeight` so a row's two buttons match; footer caption.
+- **DevButton**: `onPress` prop (the root layout passes the history reset). A `Pressable`
+  of at least `sizes.touchTarget` square, absolutely placed bottom-right (offset
+  `spacing.md` plus the safe-area insets, since absolute positioning ignores the root
+  `SafeAreaView`'s padding and would sit under Android's gesture bar), with a raised
+  `Bevel` filled `devButton` yellow in its corner, so the touch area is 44px while the face
+  stays small. `zIndex` and `elevation` keep it above screens and popups (Android orders by
+  `elevation`).
+- `devColors` are used only in `src/components/dev/`; the dev components reuse `Window`,
+  `Button`, `Bevel` and `Text` from `ui/` and add nothing to it.
+
+## As built (2026-11-14)
+
+Props added while building, beyond the tables above:
+
+- **Bevel**: `style` (outer box: size, position), `innerStyle` (padding, layout inside the
+  edge), `fill` (overrides the kind's colour, e.g. black for a terminal or GIF). Two 1px
+  lines: raised = light/dark outer, light/shadow inner; sunken and field = the reverse;
+  etched = shadow/light outer, light/shadow inner.
+- **Text**: `align`; other `Text` props pass through (e.g. `numberOfLines`,
+  `accessibilityRole`). No `style` prop, so screens can't set size or colour.
+- **Window**: `style` (size, position), `bodyStyle` (body padding/layout).
+- **TitleBar**: buttons get a `hitSlop` so their touch area reaches 44px. The _ ▫ ✕
+  pictograms are **drawn with views**, not typed: Atkinson Hyperlegible has no □ or ✕, so
+  Android would use a fallback font. Sizes are `sizes.titleGlyph` in `theme.ts`; disabled
+  glyphs are grey with a white copy 1px down-right (the engraved look).
+- **Button**: `icon` (any node, until `Icon` exists), `style` (e.g. a fixed width). Pressed
+  state is tracked with `onPressIn` / `onPressOut`.
+- **Gif**: shows the slot's local file from `assets/gifs/` (`lib/gifs.ts` `localGif()`), or
+  the black placeholder when the slot has none. Wrapped in a view hidden from screen readers
+  (decorative); tests query it with `includeHiddenElements: true`.
+- **Terminal**: `lines`, `style`. Cursor blink period `motion.cursorBlinkMs` in `theme.ts`.
+- **ResultPopup**: `title`, `slot`, `message`, `button?: { label, onPress }`, `offset?`,
+  `style`. Positioned absolutely; `offset` sets `right: -offset` and pads the body's right
+  side by the same amount. Landing's per-popup values are `landingPopups` in `theme.ts`
+  (`offsetRight`, `shiftY` from the screen's vertical centre).
+- **Fonts**: `src/components/ui/fonts.ts` maps family names to font files; the root layout
+  loads it with `useFonts`.
 
 ## Notes
 
