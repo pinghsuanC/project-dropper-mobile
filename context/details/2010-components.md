@@ -3,7 +3,8 @@
 Accepted, partly implemented · 2026-11-12 (first components 2026-11-14) · Part of [2000 UI](2000-ui.md)
 
 **Built:** `Bevel`, `Text`, `TitleBar`, `Window`, `Button`, `Gif`, `Terminal`, `ResultPopup`,
-exported from `src/components/ui/index.ts`. The rest are still to build.
+exported from `src/components/ui/index.ts`; `DevMenu`, `DevButton` in
+`src/components/dev/` (2026-11-14). The rest are still to build.
 
 Every component the screens are built from: layers, folders, props and states.
 
@@ -83,6 +84,22 @@ src/components/
 Shown in `local` / `dev`, hidden in `prod` ([1020](1020-environments.md)).
 **DevMenu**: `/dev` screen built from a `DEV_ROUTES` list. **DevButton**: floating yellow
 button above popups.
+
+As built (2026-11-14), details in [1020](1020-environments.md#as-built-2026-11-14):
+
+- **DevMenu**: `ScrollView` on the desktop teal; maroon `devBanner` strip with "DEV ONLY";
+  one `Window` per section (title-bar buttons all disabled); `Button`s two per row in equal
+  `flex: 1` cells, an odd last one alone on its row and full width; `minHeight:
+  sizes.devMenuButtonHeight` so a row's two buttons match; footer caption.
+- **DevButton**: `onPress` prop (the root layout passes the history reset). A `Pressable`
+  of at least `sizes.touchTarget` square, absolutely placed bottom-right (offset
+  `spacing.md` plus the safe-area insets, since absolute positioning ignores the root
+  `SafeAreaView`'s padding and would sit under Android's gesture bar), with a raised
+  `Bevel` filled `devButton` yellow in its corner, so the touch area is 44px while the face
+  stays small. `zIndex` and `elevation` keep it above screens and popups (Android orders by
+  `elevation`).
+- `devColors` are used only in `src/components/dev/`; the dev components reuse `Window`,
+  `Button`, `Bevel` and `Text` from `ui/` and add nothing to it.
 
 ## As built (2026-11-14)
 

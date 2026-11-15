@@ -124,6 +124,8 @@ export const sizes = {
   },
   terminalHeight: 400,
   popupWidth: 340,
+  /** Testing menu (src/components/dev/): menu button height, so a row's two buttons match. */
+  devMenuButtonHeight: 64,
 } as const;
 
 /** Blink period of the terminal cursor. */

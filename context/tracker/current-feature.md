@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-14: Add a dev-only testing menu at /dev and a floating DEV button that opens it from any screen
 - 2026-11-14: Log in on every launch from Landing and go to Home, Register, or a Retry popup
 - 2026-11-14: Add secure storage, device key signing and the server client that start-up login will use
 - 2026-11-14: Add the Windows 98 theme, fonts and the first shared UI components, with a static preview on Landing
