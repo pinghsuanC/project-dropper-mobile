@@ -37,7 +37,8 @@ Related material lives under `context/`:
 - `/current-feature complete-part`: make the part's single commit (after approval), push
   and open a PR into the feature branch. The scope stays.
 - `/current-feature complete`: wrap up the whole feature (after approval) and open a PR
-  from the feature branch into `main` (or, for a single-part feature, from its branch).
+  into `main`, from a wrap-up branch cut from the feature branch (or, for a single-part
+  feature, from its branch).
 - `/current-feature future <description>`: append planned features to the tracker's
   `# Future Features` section.
 - `/code-reviewer [path | --changed]`: read-only report of exposed secrets, unused code,
@@ -178,6 +179,8 @@ Check the server's `/docs` page when unsure; do not guess field names.
 - No attribution in commits or PRs: no `Co-Authored-By` trailer, no "Generated with
   Claude Code" line.
 - Changes reach `main` through a PR. Never force-push.
+- `feature-branch-*` branches also take changes only through PRs: a repository rule
+  requires the 3 CI checks, so a direct push is refused (`GH013`).
 - CI (`.github/workflows/ci.yml`) runs lint, type check and unit tests on every PR into
   `main` or a `feature-branch-*` middle branch, and every push to `main`. A same-repo,
   non-draft PR is squash-merged into its base and its branch deleted once all three pass,
