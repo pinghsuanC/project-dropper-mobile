@@ -29,7 +29,8 @@ list the six actions with one line each and stop.
   `feature/<kebab-case-name>`, one commit, one PR.
 - A split feature has a **feature branch** `feature-branch-<kebab-case-name>`. Every part
   branch starts from it and its PR merges into it. Once all parts are in, `complete` opens
-  one PR from the feature branch into `main`.
+  one PR into `main`, from a wrap-up branch cut from the feature branch (the feature
+  branch only takes changes through PRs).
 - **Base branch**: the tracker's `Feature branch:` when it's set, otherwise `main`. Part
   branches start from it, `review` compares against it, and part PRs target it.
 
@@ -349,10 +350,20 @@ Do `complete-part` steps 2–6 on the part branch, except that step 5 also clear
 7. Update the tracker files: add the history entry at the top of `# History`; clear
    `## Scope` (empty `Feature:` and `Feature branch:`); empty `## Next` and `## Done` in the
    parts file, keeping its headings and note.
-8. Commit only the two tracker files on the feature branch with the approved wrap-up
-   message, and push it (`git push origin <feature-branch>`, never force).
-9. **Open a PR** with head = the feature branch, base = `main`. CI squash-merges it into
-   `main` and deletes the feature branch.
+8. Create a wrap-up branch from the feature branch
+   (`git checkout -b feature/wrap-up-<kebab-case-name>`), commit only the two tracker files
+   on it with the approved wrap-up message, and push it
+   (`git push -u origin feature/wrap-up-<kebab-case-name>`, never force).
+   **Never push to the feature branch itself.** A repository rule requires all 3 CI checks
+   on `feature-branch-*` branches, so a direct push is refused (`GH013`). And don't open
+   the PR from the feature branch either: its commits have all passed CI, so CI would
+   merge that PR into `main` before the wrap-up commit could reach it.
+9. **Open a PR** with head = the wrap-up branch, base = `main`. It holds every part plus
+   the wrap-up commit. CI squash-merges it into `main` and deletes the wrap-up branch.
+10. The feature branch stays on `origin` after the merge. Tell the user, and delete it
+    (`git push origin --delete <feature-branch>`, then `git branch -D <feature-branch>`)
+    only if they ask. Its commits are in `main` as one squash commit, so git won't see the
+    local branch as merged.
 
 ## future
 
