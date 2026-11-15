@@ -52,7 +52,8 @@ src/app/
 │   ├── scan.tsx             /pairing/scan  (step 1)
 │   └── wait.tsx             /pairing/wait  (step 2)
 ├── share.tsx                /share
-└── properties.tsx           /properties
+├── properties.tsx           /properties
+└── dev.tsx                  /dev  testing menu (local / dev only, 1020)
 ```
 
 - Screen states (success, failed, errors, camera note) are states of one route, not
