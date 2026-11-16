@@ -90,30 +90,4 @@ Listed under `# Future Features` in `context/tracker/current-feature.md`.
 
 ## Open decisions
 
-Not decided yet. Once one is, it becomes a record in `context/details/` and leaves this
-list.
-
-### Server routes
-- Routes the app needs that the server only plans (🚧 in its `API.md`): pairing
-  (`/pair/*`, `GET /devices/paired`) and the server file list (`GET /files/sent`).
-- GIFs: `/auth/me` will return one `welcome_gif`, but the app has 10 GIF slots
-  (`2040-gifs.md`). One route for all slots (e.g. `GET /gifs`), or local GIFs for most?
-- Quote of the day: keep the local list (`assets/quotes.json`) or add a server route.
-- Upload size limit (100 MB in the prototype is a placeholder) and where the app gets it.
-- Timeout for the Sharing "loading" check (10–15 s suggested). Normal requests use 10 s
-  (`REQUEST_TIMEOUT_MS`).
-
-### UI
-- GIFs: final slots and the **Address** column in `2040-gifs.md`.
-- `success` green on grey fails contrast (~2.8:1): darken it or only use it on white
-  (`2030-colors.md`).
-- Popup headings per error: only Shared file ("Process Aborted") and Upload success
-  ("Upload complete") are decided; the rest say "Error".
-- Check the screens at a narrow phone width (~360 px); the Upload button row is the tightest.
-- App icon and the name shown in Android's Share menu (the splash screen is a future
-  feature).
-
-### Setup
-- `eas.json` doesn't exist yet: set `EXPO_PUBLIC_APP_ENV` / `EXPO_PUBLIC_API_BASE_URL` per
-  build profile when EAS builds are set up (`1020-environments.md`).
-- When to switch from Expo Go to a dev build (needed for Sharing).
+Listed in [`context/tracker/open-decisions.md`](context/tracker/open-decisions.md).

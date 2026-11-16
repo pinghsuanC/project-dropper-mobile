@@ -24,6 +24,8 @@ Related material lives under `context/`:
   to do and done. Both are managed by the `/current-feature` skill; don't edit them by hand
   during a feature. The tracker's `# Future Features` section is the planned-features list:
   change it only when the user asks, through `/current-feature future`.
+- `context/tracker/open-decisions.md`: questions not decided yet. A decided one becomes a
+  numbered record in `context/details/` and leaves the list.
 
 ## Skills
 
