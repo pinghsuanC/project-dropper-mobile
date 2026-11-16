@@ -1,10 +1,11 @@
 # 2010: UI components
 
-Accepted, partly implemented · 2026-11-12 (first components 2026-11-14) · Part of [2000 UI](2000-ui.md)
+Accepted, partly implemented · 2026-11-12 (first components 2026-11-14, TextField and Dialog 2026-11-15) · Part of [2000 UI](2000-ui.md)
 
-**Built:** `Bevel`, `Text`, `TitleBar`, `Window`, `Button`, `Gif`, `Terminal`, `ResultPopup`,
-exported from `src/components/ui/index.ts`; `DevMenu`, `DevButton` in
-`src/components/dev/` (2026-11-14). The rest are still to build.
+**Built:** `Bevel`, `Text`, `TitleBar`, `Window`, `Button`, `Gif`, `Terminal`, `ResultPopup`
+(2026-11-14), `TextField`, `Dialog` (`error` kind only, 2026-11-15), exported from
+`src/components/ui/index.ts`; `DevMenu`, `DevButton` in `src/components/dev/` (2026-11-14).
+The rest are still to build.
 
 Every component the screens are built from: layers, folders, props and states.
 
@@ -128,6 +129,32 @@ Props added while building, beyond the tables above:
   (`offsetRight`, `shiftY` from the screen's vertical centre).
 - **Fonts**: `src/components/ui/fonts.ts` maps family names to font files; the root layout
   loads it with `useFonts`.
+
+## As built (2026-11-15)
+
+- **Button**: `ref` (React 19 ref-as-prop, typed `Ref<ComponentRef<typeof View>>`) on the
+  `Pressable`, so Dialog can move screen-reader focus to it.
+- **TextField**: controlled: `label`, `value`, `onChangeText`, `placeholder?`, `hint?`,
+  `maxLength?`, `filter?`, `editable?` (default true), `testID?`. Every change runs `filter`,
+  then cuts to `maxLength`. The native `maxLength` prop is **not** set: it would cut a paste
+  before the filter could drop characters. Length counts characters (`Array.from`), not
+  UTF-16 units. Input text is `body`; `editable={false}` uses the `disabled` tone; the
+  placeholder is `muted`. Hint (`caption`, muted) left and counter right; the counter's
+  screen-reader label is `strings.ui.textField.countLabel` ("4 of 20 characters"), and the
+  input's `accessibilityHint` is the hint.
+- **Dialog**: `kind` (`'error'` only), `heading?` (default `strings.ui.dialog.error`; also the
+  title-bar text), `message`, `code?: string | number`, `details?: string`, `primary`,
+  `secondary?`, `testID?`. A full-screen absolute overlay (no dimming, no RN `Modal`, which
+  would be its own native window above the DEV button) on `layers.dialog` (`theme.ts`, below
+  the DEV button's 1000). The window sits in a view with `accessibilityRole="alert"`.
+  Focus: `AccessibilityInfo.sendAccessibilityEvent(ref, 'focus')` on the primary button
+  (`setAccessibilityFocus` is deprecated). The error icon is drawn with views (an `error`
+  red disc, black 1px edge, white ✕), sizes `sizes.dialogIcon`, until `Icon` exists. A 422
+  `detail` list must be turned into text by the caller before it goes in `details`.
+- **Dialog and screen readers:** the window view has `accessibilityViewIsModal` (iOS only).
+  On Android the overlay blocks touches but TalkBack can still reach the screen behind, so
+  **a screen showing a Dialog sets `importantForAccessibility="no-hide-descendants"` on its
+  own content** while it's open, and handles Android's Back button (`BackHandler`) itself.
 
 ## Notes
 
