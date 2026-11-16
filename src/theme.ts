@@ -124,8 +124,21 @@ export const sizes = {
   },
   terminalHeight: 400,
   popupWidth: 340,
+  /** Dialog (2010): its width, the code/details label column and the drawn error icon. */
+  dialogWidth: 300,
+  dialogLabelWidth: 56,
+  dialogButtonWidth: 88,
+  dialogIcon: { size: 32, border: 1, stroke: 3, crossLength: 16 },
   /** Testing menu (src/components/dev/): menu button height, so a row's two buttons match. */
   devMenuButtonHeight: 64,
+} as const;
+
+/**
+ * Stacking order (zIndex, and elevation on Android). The DEV button stays above all of these
+ * (src/components/dev/DevButton.tsx).
+ */
+export const layers = {
+  dialog: 100,
 } as const;
 
 /** Blink period of the terminal cursor. */

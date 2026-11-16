@@ -12,6 +12,18 @@ export const strings = {
       maximize: 'Maximize',
       close: 'Close',
     },
+    textField: {
+      /** The counter under a field with a length limit. */
+      count: (length: number, max: number) => `${length}/${max}`,
+      /** What screen readers say for the counter. */
+      countLabel: (length: number, max: number) => `${length} of ${max} characters`,
+    },
+    dialog: {
+      /** Default heading of an error dialog. */
+      error: 'Error',
+      code: 'Code',
+      details: 'Details',
+    },
   },
   landing: {
     connecting: 'Trying to connect ...',
