@@ -33,12 +33,16 @@ export async function saveDevice({ deviceId, userName, deviceName }: DeviceToSav
   ]);
 }
 
-/** Forget the device_id and names. The private key stays. */
+/**
+ * Forget the device_id, names and private key (after unregister). The server keeps the
+ * revoked row with this public key, so registering again needs a new key (else 409).
+ */
 export async function clearDevice(): Promise<void> {
   await Promise.all([
     SecureStore.deleteItemAsync(STORAGE_KEYS.deviceId),
     SecureStore.deleteItemAsync(STORAGE_KEYS.userName),
     SecureStore.deleteItemAsync(STORAGE_KEYS.deviceName),
+    SecureStore.deleteItemAsync(STORAGE_KEYS.privateKey),
   ]);
 }
 
