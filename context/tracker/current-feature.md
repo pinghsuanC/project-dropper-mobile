@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-15: The README opens with the app's flow: the five main screens, a flowchart and a sentence per step, plus an up-to-date overview and open decisions
 - 2026-11-15: Routes and basic pages: a route for every screen, the Windows 98 theme and first UI components, log-in at start-up, and a dev testing menu that opens any screen state
 - 2026-11-14: Screens read the testing menu's state through one typed hook and show it; release builds ignore it
 - 2026-11-14: Add a dev-only testing menu at /dev and a floating DEV button that opens it from any screen
