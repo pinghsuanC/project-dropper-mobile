@@ -68,3 +68,9 @@ test('start: the icon sits left of the label', async () => {
   );
   expect(flat('b-content').flexDirection).toBe('row');
 });
+
+test('start: the touchable is only as wide as the button, not the whole taskbar', async () => {
+  await render(<Button label="Properties" variant="start" onPress={() => {}} />);
+  const touchable = screen.getByRole('button', { name: 'Properties' });
+  expect(StyleSheet.flatten(touchable.props.style)?.alignSelf).toBe('flex-start');
+});

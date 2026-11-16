@@ -44,6 +44,9 @@ export const NAME_MAX_LENGTH = 20;
 /** How long Register shows "Registered!" before going Home. */
 export const REGISTERED_REDIRECT_MS = 700;
 
+/** Locale for dates shown in the app (Home's date line). Text itself is in strings.ts. */
+export const DATE_LOCALE = 'en-US';
+
 /** expo-secure-store keys. Allowed characters: letters, digits, `.`, `-`, `_`. */
 export const STORAGE_KEYS = {
   privateKey: 'device.private_key',

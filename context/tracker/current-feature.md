@@ -2,19 +2,20 @@
 
 ## Scope
 
-- Feature: 
-- Feature branch: 
+- Feature: Home screen after registering: greeting and quote, connection window, upload question, taskbar, and the links to Pairing, Server files, Upload and Properties
+- Feature branch: feature-branch-home
 - Parts: [current-feature-parts.md](current-feature-parts.md)
 
 ## Current part
 
 - Status: Not Started
-- Branch: 
+- Branch:
 
 ## Details
 
 # History
 
+- 2026-11-16: Home screen UI: greeting balloon, GIFs, the not-connected, connected and can't-reach looks with their buttons, the Upload question and the taskbar
 - 2026-11-16: Register screen: name the phone, make its key, register it with the server, save it and log in, with error dialogs; a phone the server has forgotten goes back to Register
 - 2026-11-16: Register this phone: name it, make its key, register with the server, save it and log in, with error dialogs; a phone the server has forgotten is cleared and sent back to Register
 - 2026-11-15: Add a text field with a character counter and an error dialog, the pieces the Register screen is built from

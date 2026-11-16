@@ -40,6 +40,7 @@ export const fonts = {
   chrome: 'Silkscreen_400Regular',
   message: 'AtkinsonHyperlegible_400Regular',
   messageBold: 'AtkinsonHyperlegible_700Bold',
+  messageItalic: 'AtkinsonHyperlegible_400Regular_Italic',
   mono: 'CourierPrime_400Regular',
   terminal: 'VT323_400Regular',
 } as const;
@@ -132,6 +133,18 @@ export const sizes = {
   dialogLabelWidth: 56,
   dialogButtonWidth: 88,
   dialogIcon: { size: 32, border: 1, stroke: 3, crossLength: 16 },
+  /** Icon (2010): drawn size; `start` is the taskbar button's. Stroke in viewBox units. */
+  icon: { default: 26, start: 16, stroke: 1.4 },
+  /**
+   * Balloon (2010): 2px outline, corners stepped in by `step` three times, a tail at `tailLeft`
+   * from the left. `tail` is the black triangle's side, `tailInset` how much smaller the yellow
+   * one inside it is.
+   */
+  balloon: { outline: 2, step: 2, steps: 3, tailLeft: 28, tail: 18, tailInset: 4 },
+  /** Home (1060): how far the main window's big button sits in from each side. */
+  homeActionInset: 12,
+  /** Taskbar (2010): the strip's height. */
+  taskbarHeight: 44,
   /** Testing menu (src/components/dev/): menu button height, so a row's two buttons match. */
   devMenuButtonHeight: 64,
 } as const;

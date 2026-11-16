@@ -1,6 +1,6 @@
 // GIF slots (2040) and their local fallback files in assets/gifs/. Session picks from the
-// server come later; until then every slot shows its local file, or the black placeholder
-// when it has none.
+// server come later; until then every slot shows its local file, or empty space when it
+// has none.
 
 export type GifSlot =
   | 'welcome'

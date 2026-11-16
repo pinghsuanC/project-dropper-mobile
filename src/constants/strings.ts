@@ -3,7 +3,6 @@
 export const strings = {
   /** Text inside the shared UI components (src/components/ui/). */
   ui: {
-    gifPlaceholder: 'GIF',
     terminalTitle: 'DROPPER.EXE',
     terminalCursor: '_',
     /** Title-bar buttons' accessibility labels (the pictograms are drawn, not text). */
@@ -58,12 +57,27 @@ export const strings = {
     ok: 'OK',
   },
   home: {
-    title: 'Home',
-    paired: (pcName: string) => `Paired with ${pcName}`,
-    unpaired: 'Not paired with a PC',
-    toPairing: 'Pair with your PC',
-    toServerFiles: 'View server files',
-    toUpload: 'Upload files',
+    /** The balloon's first line, by part of day; `name` is the user name or `friend`. */
+    greeting: {
+      morning: (name: string) => `Good morning, ${name}`,
+      afternoon: (name: string) => `Good afternoon, ${name}`,
+      evening: (name: string) => `Good evening, ${name}`,
+    },
+    /** Used in the greeting when no user name is stored. */
+    friend: 'friend',
+    quoteLabel: 'QUOTE OF THE DAY',
+    titleUnpaired: 'Not connected to a PC',
+    titlePaired: 'Connected to your server',
+    titleServerError: "Can't reach your server",
+    connect: 'I want to connect to my PC',
+    viewServerFiles: 'View server files',
+    retry: 'Retry',
+    serverConnected: 'Server connected',
+    serverError: 'Server error, please check your server and retry.',
+    uploadTitle: 'Upload',
+    uploadPrompt: 'Do you want to upload?',
+    yes: 'Yes',
+    no: 'No',
   },
   taskbar: {
     properties: 'Properties',

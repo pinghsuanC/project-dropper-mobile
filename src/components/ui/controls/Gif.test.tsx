@@ -1,9 +1,8 @@
 import { render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
-import { strings } from '@/constants/strings';
 import { localGif } from '@/lib/gifs';
-import { colors, sizes } from '@/theme';
+import { sizes } from '@/theme';
 
 import { Gif } from './Gif';
 
@@ -15,16 +14,24 @@ test('a slot with a local file shows that GIF', async () => {
   const image = screen.getByTestId('g-image', HIDDEN);
   expect(localGif('notWelcome')).toBeDefined();
   expect(JSON.stringify(image.props.source)).toContain('notWelcome.gif');
-  expect(screen.queryByText(strings.ui.gifPlaceholder, HIDDEN)).toBeNull();
-});
+  });
 
-test('a slot without a file shows the black GIF placeholder', async () => {
+test('a slot without a file keeps its space empty: no image, no placeholder box', async () => {
   await render(<Gif slot="banner" size="large" testID="g" />);
   expect(localGif('banner')).toBeUndefined();
   expect(screen.queryByTestId('g-image', HIDDEN)).toBeNull();
-  expect(screen.getByText(strings.ui.gifPlaceholder, HIDDEN)).toBeTruthy();
-  const inner = StyleSheet.flatten(screen.getByTestId('g-bevel-inner', HIDDEN).props.style);
-  expect(inner.backgroundColor).toBe(colors.terminal);
+  const outer = screen.getByTestId('g', HIDDEN);
+  expect(outer.children).toHaveLength(0);
+  expect(StyleSheet.flatten(outer.props.style).height).toBe(sizes.gif.large.height);
+});
+
+test('no frame or background behind the GIF', async () => {
+  await render(<Gif slot="homeLeft" size="half" testID="g" />);
+  const outer = screen.getByTestId('g', HIDDEN);
+  expect(StyleSheet.flatten(outer.props.style).backgroundColor).toBeUndefined();
+  expect(screen.queryByTestId('g-bevel', HIDDEN)).toBeNull();
+  // The image sits straight in the slot's box, with nothing between them.
+  expect(screen.getByTestId('g-image', HIDDEN).parent).toBe(outer);
 });
 
 test.each(['small', 'large', 'popup'] as const)('size %s sets its dimensions', async (size) => {
