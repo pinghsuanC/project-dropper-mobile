@@ -2,6 +2,39 @@
 
 The Android app for Project Dropper.
 
+## How it works
+
+<table>
+  <tr>
+    <td align="center"><img src="context/prototypes/register/register.png" width="150" alt="Register screen"><br><sub>1. Register</sub></td>
+    <td align="center"><img src="context/prototypes/pairing/pairing-1-scan.png" width="150" alt="Pair screen with the Open camera button"><br><sub>2. Pair</sub></td>
+    <td align="center"><img src="context/prototypes/home/home-paired-01.png" width="150" alt="Home screen"><br><sub>3. Home</sub></td>
+    <td align="center"><img src="context/prototypes/server/server-files.png" width="150" alt="Server files screen"><br><sub>4. Server files</sub></td>
+    <td align="center"><img src="context/prototypes/upload/upload-in-progress.png" width="150" alt="Upload screen sending files"><br><sub>5. Upload</sub></td>
+  </tr>
+</table>
+
+```mermaid
+flowchart LR
+  Register --> Pair["Pair (scan the PC's QR code)"] --> Home
+  Home <--> Files[Server files]
+  Home <--> Upload
+```
+
+1. **Register**: on first launch, enter your name and a name for the phone. The phone
+   registers itself with your own server; there's no password to remember.
+2. **Pair**: open the camera and scan the QR code that the desktop app shows. The desktop
+   app lives in its own repo, [project-dropper](https://github.com/pinghsuanC/project-dropper).
+   A phone pairs with one PC.
+3. **Home**: greets you with a quote of the day, checks the connection to your server, and
+   asks whether you want to upload.
+4. **Server files**: see and search the files already on the server.
+5. **Upload**: add files to the queue and send them to your PC, with progress for each file.
+
+From then on, the app signs in by itself each time it starts and opens Home. These are the
+main screens only; every screen and error state is in
+[`context/prototypes/`](context/prototypes/) (see [Prototype](#prototype)).
+
 ## Tech
 
 - **[Expo](https://expo.dev)** (SDK 58): React Native framework, with Expo Router for navigation
@@ -27,52 +60,48 @@ Screenshots live next to it, one folder per DEV-menu category (`landing/`, `regi
 frames (`register-submit-01.png`, `-02`, …).
 
 # Project Overview
-1. Project + connection
 
-Server URL in config: your PC’s LAN IP, e.g. http://192.168.x.x:8000. Run uvicorn with --host 0.0.0.0 so the phone can reach it (by default it only listens to your own PC)
-First win: the phone calls GET /health and shows “ok”
+File Dropper sends files from your phone to your own PC, through a server you run
+yourself. There are three pieces:
 
-2. Device identity
+- **This app** (Android, Expo): registers the phone, pairs it with a PC, and uploads files.
+- **The server** (FastAPI): signs devices in, pairs them, and hands out upload links.
+  File bytes go straight to cloud storage (Cloudflare R2), not through the server.
+- **The desktop app**: shows the pairing QR code and downloads the files sent to it.
 
-Key: generate an Ed25519 key pair once, and store the private key in expo-secure-store. For signing in JS, @noble/ed25519 is the common choice (check its README for the one-time hash setup it needs in React Native)
-Fingerprint: expo-application’s Android ID → SHA-256 → sent as fingerprint
-Public key format: your server expects a PEM (SubjectPublicKeyInfo). Noble gives raw 32-byte keys, so the app has to wrap it as PEM. This is the most likely snag, so test it against /auth/register early
+The server and desktop app live in
+[project-dropper](https://github.com/pinghsuanC/project-dropper).
 
-3. Register + login
+**Built so far:** a route for every screen, the Windows 98 look and its shared components,
+sign-in on every start-up (register once, then sign a server challenge with the phone's
+own key), and a dev-only testing menu that opens any screen in any state.
 
-/auth/register (platform: "android") → save device_id
-challenge → sign challenge as UTF-8 bytes → /auth/verify-challenge → token
-/auth/me shows “Logged in as Pixel …”
+**Next:** pairing with the PC, the server file list, and sending files. Their server
+routes are still planned, so they wait on the server.
 
-4. Send a file
-
-Pick it with expo-document-picker (it gives name, size, mimeType)
-Checksum: SHA-256 of the file’s bytes. In JS this is trickier than in Python for big files, so start with small test files
-prepare-upload → PUT to upload_url (expo-file-system’s uploadAsync with httpMethod: "PUT" and binary upload) → finish-upload
-Done when the desktop’s test_download receives a file sent from the phone. 🎉
+**Further reading:**
+- [`CLAUDE.md`](CLAUDE.md) "How the app works": the sign-in, pairing and upload steps.
+- The server's `API.md`: every route, with its status (built or planned).
+- [`context/details/`](context/details/README.md): design and architecture decisions.
 
 ## Future features
 
 Listed under `# Future Features` in `context/tracker/current-feature.md`.
 
-## Open decisions (next session)
+## Open decisions
 
-Not decided yet. Details for each live in `context/details/` where noted.
+Not decided yet. Once one is, it becomes a record in `context/details/` and leaves this
+list.
 
-### Do first
-- **Rename `context/requriements/` → `context/requirements/`** (CLAUDE.md uses the correct
-  spelling), then write a short requirements file per feature from the prototype.
-
-### API contract (new `context/details/3000-api.md`)
-- Routes the app needs that the server doesn't have yet: `GET /health`, pairing claim,
-  "paired with?", list server files, `GET /gifs`, `GET /quote`.
-- Which routes start-up **requires** (health, login, paired with) vs. treats as optional
-  (GIFs, quote).
-- GIFs before login: local only, or a GIF route that needs no token?
+### Server routes
+- Routes the app needs that the server only plans (🚧 in its `API.md`): pairing
+  (`/pair/*`, `GET /devices/paired`) and the server file list (`GET /files/sent`).
+- GIFs: `/auth/me` will return one `welcome_gif`, but the app has 10 GIF slots
+  (`2040-gifs.md`). One route for all slots (e.g. `GET /gifs`), or local GIFs for most?
+- Quote of the day: keep the local list (`assets/quotes.json`) or add a server route.
 - Upload size limit (100 MB in the prototype is a placeholder) and where the app gets it.
-- Timeouts: the Sharing "loading" check (10–15 s suggested) and normal requests.
-- How the client turns FastAPI's 422 `detail` list into readable text for the error popup.
-- User name: keep it on the phone only, or add a field on the server?
+- Timeout for the Sharing "loading" check (10–15 s suggested). Normal requests use 10 s
+  (`REQUEST_TIMEOUT_MS`).
 
 ### UI
 - GIFs: final slots and the **Address** column in `2040-gifs.md`.
@@ -80,12 +109,11 @@ Not decided yet. Details for each live in `context/details/` where noted.
   (`2030-colors.md`).
 - Popup headings per error: only Shared file ("Process Aborted") and Upload success
   ("Upload complete") are decided; the rest say "Error".
-- Optional pixel Chinese font (Cubic 11 / Fusion Pixel) or keep the system fallback
-  (`2020-typography.md`).
 - Check the screens at a narrow phone width (~360 px); the Upload button row is the tightest.
-- App icon, splash screen, and the name shown in Android's Share menu.
+- App icon and the name shown in Android's Share menu (the splash screen is a future
+  feature).
 
 ### Setup
-- Create `.env.example` and set `EXPO_PUBLIC_APP_ENV` / `EXPO_PUBLIC_API_BASE_URL` per
-  `eas.json` profile (`1020-environments.md`).
+- `eas.json` doesn't exist yet: set `EXPO_PUBLIC_APP_ENV` / `EXPO_PUBLIC_API_BASE_URL` per
+  build profile when EAS builds are set up (`1020-environments.md`).
 - When to switch from Expo Go to a dev build (needed for Sharing).
