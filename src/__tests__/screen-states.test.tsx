@@ -27,9 +27,9 @@ beforeEach(() => {
   jest.mocked(runStartup).mockClear();
 });
 
-// Register is built: its states open dialogs instead (register.test.tsx).
+// Register and Home are built: their states change the screen itself (register.test.tsx,
+// home.test.tsx) instead of showing a state line.
 test.each([
-  ['/home', 'paired'],
   ['/pairing/scan', 'cameraNote'],
   ['/pairing/wait', 'error'],
   ['/server-files', 'empty'],
@@ -42,7 +42,7 @@ test.each([
   expect(screen.getByText(strings.dev.stateLine(state))).toBeTruthy();
 });
 
-test.each(['/home', '/upload', '/properties'])('%s ignores a state it does not have', async (path) => {
+test.each(['/upload', '/properties'])('%s ignores a state it does not have', async (path) => {
   await openAt(`${path}?state=bogus`);
   expect(screen.queryByText(strings.dev.stateLine('bogus'))).toBeNull();
 });
@@ -55,9 +55,15 @@ test('Register ignores a state it does not have: no dialog', async () => {
 
 test('prod builds ignore the state', async () => {
   mockShowMenu = false;
+  await openAt('/upload?state=tooLarge');
+  expect(screen.getByRole('header', { name: strings.upload.title })).toBeTruthy();
+  expect(screen.queryByText(strings.dev.stateLine('tooLarge'))).toBeNull();
+});
+
+test('prod builds ignore Home states: the look follows the session', async () => {
+  mockShowMenu = false;
   await openAt('/home?state=paired');
-  expect(screen.getByRole('header', { name: strings.home.title })).toBeTruthy();
-  expect(screen.queryByText(strings.dev.stateLine('paired'))).toBeNull();
+  expect(screen.getByText(strings.home.titleUnpaired)).toBeTruthy();
 });
 
 test('prod builds ignore Register states: no dialog', async () => {
@@ -69,8 +75,8 @@ test('prod builds ignore Register states: no dialog', async () => {
 
 test('a state never changes the session', async () => {
   await openAt('/home?state=paired');
+  expect(screen.getByText(strings.home.titlePaired)).toBeTruthy();
   expect(getSession().pairedWith).toBeNull();
-  expect(screen.getByText(strings.home.unpaired)).toBeTruthy();
 });
 
 test('Landing ignores state and runs the real start-up', async () => {

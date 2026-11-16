@@ -1,14 +1,11 @@
-// The GIF for a slot (2040). Takes a slot, never a URL. Shows the slot's local GIF, or the
-// black "GIF" placeholder when the slot has no file yet. Decorative: hidden from screen readers.
+// The GIF for a slot (2040). Takes a slot, never a URL. Shows the slot's local GIF straight on
+// the screen, with no frame or background. A slot with no file yet keeps its space empty, so
+// the layout doesn't shift once a file arrives. Decorative: hidden from screen readers.
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 
-import { strings } from '@/constants/strings';
 import { localGif, type GifSlot } from '@/lib/gifs';
-import { colors, sizes } from '@/theme';
-
-import { Bevel } from '../primitives/Bevel';
-import { Text } from '../primitives/Text';
+import { sizes } from '@/theme';
 
 export type GifSize = keyof typeof sizes.gif;
 
@@ -27,13 +24,6 @@ export function Gif({ slot, size, testID }: Props) {
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Bevel
-        kind="sunken"
-        fill={colors.terminal}
-        style={styles.frame}
-        innerStyle={styles.inner}
-        testID={testID ? `${testID}-bevel` : undefined}
-      >
       {source !== undefined ? (
         <Image
           testID={testID ? `${testID}-image` : undefined}
@@ -41,12 +31,7 @@ export function Gif({ slot, size, testID }: Props) {
           contentFit="contain"
           style={styles.image}
         />
-      ) : (
-        <Text variant="title" tone="inverse">
-          {strings.ui.gifPlaceholder}
-        </Text>
-      )}
-      </Bevel>
+      ) : null}
     </View>
   );
 }
@@ -59,7 +44,5 @@ const sizeStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  frame: { flex: 1 },
-  inner: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   image: { width: '100%', height: '100%' },
 });

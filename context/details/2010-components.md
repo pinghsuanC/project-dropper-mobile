@@ -1,9 +1,10 @@
 # 2010: UI components
 
-Accepted, partly implemented · 2026-11-12 (first components 2026-11-14, TextField and Dialog 2026-11-15) · Part of [2000 UI](2000-ui.md)
+Accepted, partly implemented · 2026-11-12 (first components 2026-11-14, TextField and Dialog 2026-11-15, Home's components 2026-11-16) · Part of [2000 UI](2000-ui.md)
 
 **Built:** `Bevel`, `Text`, `TitleBar`, `Window`, `Button`, `Gif`, `Terminal`, `ResultPopup`
-(2026-11-14), `TextField`, `Dialog` (`error` kind only, 2026-11-15), exported from
+(2026-11-14), `TextField`, `Dialog` (`error` kind only, 2026-11-15), `Icon`, `Balloon`,
+`ConfirmWindow`, `Taskbar` (2026-11-16), exported from
 `src/components/ui/index.ts`; `DevMenu`, `DevButton` in `src/components/dev/` (2026-11-14).
 The rest are still to build.
 
@@ -107,7 +108,7 @@ As built (2026-11-14), details in [1020](1020-environments.md#as-built-2026-11-1
 Props added while building, beyond the tables above:
 
 - **Bevel**: `style` (outer box: size, position), `innerStyle` (padding, layout inside the
-  edge), `fill` (overrides the kind's colour, e.g. black for a terminal or GIF). Two 1px
+  edge), `fill` (overrides the kind's colour, e.g. black for a terminal). Two 1px
   lines: raised = light/dark outer, light/shadow inner; sunken and field = the reverse;
   etched = shadow/light outer, light/shadow inner.
 - **Text**: `align`; other `Text` props pass through (e.g. `numberOfLines`,
@@ -119,8 +120,9 @@ Props added while building, beyond the tables above:
   glyphs are grey with a white copy 1px down-right (the engraved look).
 - **Button**: `icon` (any node, until `Icon` exists), `style` (e.g. a fixed width). Pressed
   state is tracked with `onPressIn` / `onPressOut`.
-- **Gif**: shows the slot's local file from `assets/gifs/` (`lib/gifs.ts` `localGif()`), or
-  the black placeholder when the slot has none. Wrapped in a view hidden from screen readers
+- **Gif**: shows the slot's local file from `assets/gifs/` (`lib/gifs.ts` `localGif()`)
+  straight on the screen, no frame or background (2026-11-16); a slot with no file keeps its
+  size, empty. Wrapped in a view hidden from screen readers
   (decorative); tests query it with `includeHiddenElements: true`.
 - **Terminal**: `lines`, `style`. Cursor blink period `motion.cursorBlinkMs` in `theme.ts`.
 - **ResultPopup**: `title`, `slot`, `message`, `button?: { label, onPress }`, `offset?`,
@@ -129,6 +131,33 @@ Props added while building, beyond the tables above:
   (`offsetRight`, `shiftY` from the screen's vertical centre).
 - **Fonts**: `src/components/ui/fonts.ts` maps family names to font files; the root layout
   loads it with `useFonts`.
+
+## As built (2026-11-16, Home)
+
+- **Icon** (controls): `react-native-svg` (in Expo Go; installed with `expo install`).
+  `name`: `monitor` · `globe` · `retry` · `gear` (the others in the table come later),
+  `size`: `default` (`sizes.icon.default`, 26) · `start` (16, the taskbar button), `tone`
+  (any text tone; the SVG draws in `currentColor`). Shapes are the prototype's: outline icons
+  in a 24-unit box with `sizes.icon.stroke`, the gear a filled 16-unit pixel shape whose hole
+  is `face`. Hidden from screen readers (the button's label says it all).
+- **Balloon** (patterns): `title` (bold), optional `label` (caption, muted, bold), `text`
+  (label role, **italic**). One SVG behind the text, sized from the text's `onLayout`: a
+  black stepped outline and a `tooltip` inside (`steppedOutline(w, h, inset)`, corners
+  stepped in by 2px three times, as the prototype's clip-path), and a two-triangle tail at
+  `sizes.balloon.tailLeft` that opens the body's bottom edge. Draws nothing until measured.
+  `accessible` with `accessibilityRole="text"`, so TalkBack reads it as one text item.
+  A layout at the same size keeps the old size object, so it doesn't redraw on every pass.
+- **ConfirmWindow** (patterns): `title`, `prompt`, `primary` / `secondary`
+  (`{ label, onPress, disabled? }`). All title-bar buttons disabled: it can't be closed;
+  the screen decides when it shows. Buttons `minWidth: sizes.dialogButtonWidth`.
+- **Button** `start`: the touchable (Pressable) is `alignSelf: 'flex-start'` too, not only
+  the face, or its touch area spans the whole taskbar.
+- **Taskbar** (patterns): `onProperties`. A `face` strip, 2px `bevelLight` top edge,
+  `minHeight: sizes.taskbarHeight`, with a `start` Button (gear icon, "Properties"). In
+  normal layout at the bottom of the `(taskbar)` layout; the root `SafeAreaView` keeps it
+  above Android's gesture bar.
+- **Text**: `italic` uses Atkinson Hyperlegible's real italic file (`fonts.messageItalic`),
+  message font only; with `bold` too, bold wins (no bold italic is loaded).
 
 ## As built (2026-11-15)
 

@@ -51,6 +51,9 @@ under About in Properties later.
   `bold`; Android doesn't fake bold for custom fonts), `mono`, `terminal`. Values are the
   family names registered by `useFonts` (e.g. `Silkscreen_400Regular`).
 - `bold` only changes the message font (body, label, caption); Silkscreen has no bold.
+- `italic` (2026-11-16, Home's quote) uses the real italic file
+  `AtkinsonHyperlegible_400Regular_Italic` (`fonts.messageItalic`), message font only; with
+  `bold`, bold wins (no bold italic is loaded).
 - `maxFontSizeMultiplier` = 1.5 on all text.
 - `disabled` shadow: 1px down/right, white, radius 0.01 (Android draws nothing at 0).
 - If a font fails to load, the app carries on with system fonts instead of hanging on the

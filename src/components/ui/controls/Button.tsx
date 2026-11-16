@@ -40,6 +40,8 @@ export function Button({ label, onPress, disabled = false, variant = 'default', 
       onPress={onPress}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
+      // A start button is only as wide as its face, touch area included.
+      style={variant === 'start' ? styles.start : undefined}
     >
       <Bevel
         kind={sunk ? 'sunken' : 'raised'}

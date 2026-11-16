@@ -37,6 +37,7 @@ describe('fonts and type roles (2020)', () => {
       chrome: 'Silkscreen_400Regular',
       message: 'AtkinsonHyperlegible_400Regular',
       messageBold: 'AtkinsonHyperlegible_700Bold',
+      messageItalic: 'AtkinsonHyperlegible_400Regular_Italic',
       mono: 'CourierPrime_400Regular',
       terminal: 'VT323_400Regular',
     });
