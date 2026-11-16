@@ -37,12 +37,13 @@ describe('Landing', () => {
 });
 
 describe('Register', () => {
-  test('goes to Home', async () => {
+  test('opens the Register window', async () => {
     await openAt('/register');
-    expect(screen.getByRole('header', { name: strings.register.title })).toBeTruthy();
-    await pressLink(strings.register.toHome);
-    expect(screen).toHavePathname('/home');
+    expect(screen).toHavePathname('/register');
+    expect(screen.getByText(strings.register.title)).toBeTruthy();
   });
+
+  // Its form, flow and where it goes next are in register.test.tsx.
 });
 
 describe('Home', () => {

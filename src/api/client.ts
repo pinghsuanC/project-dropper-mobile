@@ -79,6 +79,18 @@ async function readJson(response: Response, signal: AbortSignal): Promise<unknow
   }
 }
 
+/** An error detail as text for a dialog, or undefined when there's none. */
+export function detailText(detail: ErrorDetail): string | undefined {
+  if (detail === null) return undefined;
+  if (typeof detail === 'string') return detail || undefined;
+  // A 422 list: one "field: message" line per issue. The leading "body" says nothing to a person.
+  const lines = detail.map(({ loc, msg }) => {
+    const field = loc.filter((part, i) => !(i === 0 && part === 'body')).join('.');
+    return field ? `${field}: ${msg}` : msg;
+  });
+  return lines.length > 0 ? lines.join('\n') : undefined;
+}
+
 function detailOf(json: unknown): ErrorDetail {
   if (typeof json !== 'object' || json === null) return null;
   return (json as { detail?: ErrorDetail }).detail ?? null;

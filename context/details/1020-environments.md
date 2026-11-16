@@ -22,6 +22,20 @@ and are read **only** in `src/constants/config.ts`. Set them in `.env` locally a
 | `dev` | Builds for real-life testing | Dev server | Shown |
 | `prod` | Release builds | Production server | **Hidden** |
 
+### Local server address (found 2026-11-16)
+
+- **Use the PC's LAN address**, e.g. `http://10.0.0.247:8000`, also from the Android
+  emulator. In Expo Go 58, `fetch` to the emulator alias `http://10.0.2.2:8000` never
+  opened a connection (it timed out after 10 s), though the emulator's shell reached it;
+  the LAN address works, as it does for Metro. Cause not found.
+- Uvicorn's `0.0.0.0` is where it listens, not an address to connect to.
+- **What wins:** a variable already set in the terminal, then `.env.local`, then `.env`.
+  After a change, restart with `npx expo start -c` in a fresh terminal. To see the value
+  actually used, search the bundle Metro serves for `EXPO_PUBLIC_API_BASE_URL`.
+- A real phone over Wi-Fi couldn't reach the PC (2026-11-16: same subnet, ping worked,
+  firewall allowed Python; not solved). `adb reverse tcp:8000 tcp:8000` over USB with
+  `http://127.0.0.1:8000` avoids the network.
+
 ```ts
 // src/constants/config.ts
 const ENVS = ['local', 'dev', 'prod'] as const;

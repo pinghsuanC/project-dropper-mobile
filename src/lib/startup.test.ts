@@ -5,7 +5,6 @@ import { sha512 } from '@noble/hashes/sha2.js';
 import * as SecureStore from 'expo-secure-store';
 
 import { apiBaseUrl, STORAGE_KEYS } from '@/constants/config';
-import { publicKeyToPem } from '@/lib/crypto';
 import { runStartup } from '@/lib/startup';
 import { getDevice, getPrivateKey, saveDevice, savePrivateKey } from '@/lib/storage';
 import { getSession } from '@/state/session';
@@ -35,7 +34,6 @@ jest.mock('@/constants/config', () => ({
 ed.hashes.sha512 = sha512;
 
 const store = (SecureStore as unknown as { __store: Map<string, string> }).__store;
-const FINGERPRINT = '9d2e6e6891dd1bbe2119e1f12c1d81e220b8da14a64f68f83dddd8e6fc6769a0';
 const CHALLENGE = 'Y2hhbGxlbmdlLWJ5dGVz';
 
 // --- fake server -------------------------------------------------------------------------
@@ -194,61 +192,43 @@ it('a missing user name still logs in, with a null user name', async () => {
   expect(getSession().userName).toBeNull();
 });
 
-describe('challenge 404: register again once', () => {
-  it('registers with the stored device name, key and fingerprint, then logs in', async () => {
-    await storeDevice({ userName: null });
-    reply('/auth/challenge', fail(404));
-    reply('/auth/register', ok({ device_id: 'dev-2' }, 201));
-    replyLogin('dev-2');
-
-    expect(await runStartup()).toBe('welcome');
-    expect(paths()).toEqual([
-      '/auth/challenge',
-      '/auth/register',
-      '/auth/challenge',
-      '/auth/verify-challenge',
-      '/auth/me',
-    ]);
-    expect(calls[1].body).toEqual({
-      name: 'Pixel',
-      platform: 'android',
-      public_key: publicKeyToPem(publicKey),
-      fingerprint: FINGERPRINT,
-    });
-    expect(calls[2].body).toEqual({ device_id: 'dev-2' });
-    expect(getSession()).toMatchObject({ deviceId: 'dev-2', token: 'token-for-dev-2' });
-  });
-
-  it('saves the new device_id and keeps the names', async () => {
+describe('challenge 404: the server forgot this phone (decided 2026-11-16)', () => {
+  beforeEach(async () => {
     await storeDevice();
     reply('/auth/challenge', fail(404));
-    reply('/auth/register', ok({ device_id: 'dev-2' }, 201));
-    replyLogin('dev-2');
-    await runStartup();
-    expect(await getDevice()).toEqual({ deviceId: 'dev-2', userName: 'Ping', deviceName: 'Pixel' });
   });
 
-  it('a second 404 → notRegistered, with no second register', async () => {
-    await storeDevice();
-    reply('/auth/challenge', fail(404), fail(404));
-    reply('/auth/register', ok({ device_id: 'dev-2' }, 201));
-    expect(await runStartup()).toBe('notRegistered');
-    expect(paths().filter((p) => p === '/auth/register')).toHaveLength(1);
-  });
-
-  it('no stored device name → notRegistered, no register call', async () => {
-    await storeDevice({ deviceName: null });
-    reply('/auth/challenge', fail(404));
+  it('→ notRegistered, with no register and no other call', async () => {
     expect(await runStartup()).toBe('notRegistered');
     expect(paths()).toEqual(['/auth/challenge']);
   });
 
-  it.each([400, 409, 422])('register %i → notRegistered', async (status) => {
-    await storeDevice();
-    reply('/auth/challenge', fail(404));
-    reply('/auth/register', fail(status));
-    expect(await runStartup()).toBe('notRegistered');
+  it('deletes the device_id, both names and the private key', async () => {
+    await runStartup();
+    await expect(getDevice()).resolves.toBeNull();
+    await expect(getPrivateKey()).resolves.toBeNull();
+    for (const key of Object.values(STORAGE_KEYS)) expect(store.has(key)).toBe(false);
   });
+
+  it('clears the identity it had put in the session', async () => {
+    await runStartup();
+    expect(getSession()).toMatchObject({ deviceId: null, userName: null, deviceName: null, token: null });
+  });
+
+  it('a later start-up goes straight to Register, calling nothing', async () => {
+    await runStartup();
+    calls = [];
+    expect(await runStartup()).toBe('notRegistered');
+    expect(calls).toEqual([]);
+  });
+});
+
+it('only a 404 wipes the phone: a 403 (revoked) keeps the stored device', async () => {
+  await storeDevice();
+  reply('/auth/challenge', fail(403));
+  expect(await runStartup()).toBe('notRegistered');
+  await expect(getDevice()).resolves.toMatchObject({ deviceId: 'dev-1' });
+  await expect(getPrivateKey()).resolves.not.toBeNull();
 });
 
 describe('notRegistered from the server', () => {
@@ -294,10 +274,11 @@ describe('unreachable', () => {
     expect(await runStartup()).toBe('unreachable');
   });
 
-  it('network error on re-register', async () => {
-    reply('/auth/challenge', fail(404));
-    reply('/auth/register', 'network');
+  it('5xx on challenge: unreachable, and the stored device is kept (only a 404 wipes it)', async () => {
+    reply('/auth/challenge', fail(500));
     expect(await runStartup()).toBe('unreachable');
+    await expect(getDevice()).resolves.toMatchObject({ deviceId: 'dev-1' });
+    await expect(getPrivateKey()).resolves.not.toBeNull();
   });
 
   it('5xx on /auth/me, and the token is cleared', async () => {
@@ -317,12 +298,9 @@ describe('unreachable', () => {
   });
 });
 
-it('never writes the token to storage on any path', async () => {
+it('a normal login writes nothing to storage (the token stays in memory)', async () => {
   await storeDevice();
-  reply('/auth/challenge', fail(404));
-  reply('/auth/register', ok({ device_id: 'dev-2' }, 201));
-  replyLogin('dev-2');
-  await runStartup();
-  expect(writtenValues()).not.toContain('token-for-dev-2');
-  expect(writtenValues()).toEqual(['dev-2']);
+  replyLogin('dev-1');
+  expect(await runStartup()).toBe('welcome');
+  expect(writtenValues()).toEqual([]);
 });

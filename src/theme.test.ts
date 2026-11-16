@@ -16,7 +16,7 @@ describe('colors (2030)', () => {
       titleText: '#ffffff',
       text: '#000000',
       muted: '#444444',
-      success: '#008000',
+      success: '#005000',
       error: '#a00000',
       disabled: '#808080',
       disabledShadow: '#ffffff',

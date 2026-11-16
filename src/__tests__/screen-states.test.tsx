@@ -27,8 +27,8 @@ beforeEach(() => {
   jest.mocked(runStartup).mockClear();
 });
 
+// Register is built: its states open dialogs instead (register.test.tsx).
 test.each([
-  ['/register', 'serverError'],
   ['/home', 'paired'],
   ['/pairing/scan', 'cameraNote'],
   ['/pairing/wait', 'error'],
@@ -42,16 +42,29 @@ test.each([
   expect(screen.getByText(strings.dev.stateLine(state))).toBeTruthy();
 });
 
-test.each(['/register', '/home', '/upload', '/properties'])('%s ignores a state it does not have', async (path) => {
+test.each(['/home', '/upload', '/properties'])('%s ignores a state it does not have', async (path) => {
   await openAt(`${path}?state=bogus`);
   expect(screen.queryByText(strings.dev.stateLine('bogus'))).toBeNull();
 });
 
+test('Register ignores a state it does not have: no dialog', async () => {
+  await openAt('/register?state=bogus');
+  expect(screen.getByText(strings.register.title)).toBeTruthy();
+  expect(screen.queryByTestId('register-dialog')).toBeNull();
+});
+
 test('prod builds ignore the state', async () => {
   mockShowMenu = false;
+  await openAt('/home?state=paired');
+  expect(screen.getByRole('header', { name: strings.home.title })).toBeTruthy();
+  expect(screen.queryByText(strings.dev.stateLine('paired'))).toBeNull();
+});
+
+test('prod builds ignore Register states: no dialog', async () => {
+  mockShowMenu = false;
   await openAt('/register?state=serverError');
-  expect(screen.getByRole('header', { name: strings.register.title })).toBeTruthy();
-  expect(screen.queryByText(strings.dev.stateLine('serverError'))).toBeNull();
+  expect(screen.getByText(strings.register.title)).toBeTruthy();
+  expect(screen.queryByTestId('register-dialog')).toBeNull();
 });
 
 test('a state never changes the session', async () => {
