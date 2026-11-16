@@ -1,6 +1,6 @@
 # 2030: Colour palette
 
-Accepted, implemented · 2026-11-12 (built 2026-11-14; icons not yet) · [index](README.md)
+Accepted, implemented · 2026-11-12 (built 2026-11-14; green decided 2026-11-16; icons not yet) · [index](README.md)
 
 One fixed light palette, defined only in `theme.ts` and used **by name**, never by hex.
 No dark mode (`app.json`: `userInterfaceStyle: "light"`).
@@ -31,13 +31,13 @@ No dark mode (`app.json`: `userInterfaceStyle: "light"`).
 |---|---|---|
 | `text` | `#000000` | Normal text |
 | `muted` | `#444444` | Labels, hints, fine print |
-| `success` | `#008000` | Connected, Sent ✓ |
+| `success` | `#005000` | Connected, Sent ✓, Registered! |
 | `error` | `#a00000` | Errors, Failed, Too large |
 | `disabled` | `#808080` + `#ffffff` 1px shadow | Disabled controls (engraved) |
 | `terminalText` | `#c0c0c0` | Terminal text |
 
-**Contrast:** `success` on `face` is ~2.8:1, below the 4.5:1 normal text needs. Use it on
-white only (~5.1:1), or darken it to ~`#005000` on grey. `error` on grey just passes
+**Contrast:** `success` is `#005000` (decided 2026-11-16, was `#008000`): ~5.4:1 on `face`
+and ~9:1 on white. The old green was ~2.8:1 on `face`, below the 4.5:1 normal text needs. `error` on grey just passes
 (~4.6:1). `disabled` is low on purpose; it's always paired with
 `accessibilityState.disabled`.
 
@@ -58,7 +58,9 @@ with a disabled button). No emoji icons: they look different on every phone.
 - `theme.ts` `colors` has every name above, plus `disabledShadow` (`#ffffff`) for the
   disabled tone's shadow. `devColors` is separate.
 - `app.json` `userInterfaceStyle: "light"` is set.
-- Still open: the `success` green (plan step 3), and the icon colours (with `Icon`).
+- `success` darkened to `#005000` (2026-11-16, Register's "Registered!" on grey).
+- Still open: the icon colours (with `Icon`). Until then the Dialog's drawn error icon uses
+  `error` with a white ✕ (2010).
 
 ## Testing menu only
 
@@ -69,6 +71,6 @@ separate `devColors` used only by `src/components/dev/`.
 
 1. Tests: tones resolve to these hexes; Button uses `face` / bevels, `disabled` when disabled.
 2. `theme.ts`: `colors` with exactly these names, plus `devColors`.
-3. Decide the `success` green, update this file.
+3. ~~Decide the `success` green~~: `#005000`, 2026-11-16.
 4. `app.json`: `userInterfaceStyle: "light"`.
 5. `/code-reviewer`: flag hex / `rgb()` outside `theme.ts`.

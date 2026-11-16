@@ -2,8 +2,7 @@
 
 Not decided yet. Once one is, it becomes a numbered record in `context/details/` (and a row
 in its `README.md`) and leaves this list. Questions already written up in a record stay
-there, not here: final GIF slots and addresses (2040), `success` green's contrast (2030),
-the `eas.json` profiles (1020).
+there, not here: final GIF slots and addresses (2040), the `eas.json` profiles (1020).
 
 ## Server routes
 
@@ -19,8 +18,8 @@ the `eas.json` profiles (1020).
 ## UI
 
 - **Error popup headings:** Landing's popups have their own titles, and Shared file uses
-  "Process Aborted" and Upload success "Upload complete". Register, Home, Pairing and
-  Upload errors still need theirs.
+  "Process Aborted" and Upload success "Upload complete". Register uses "Error" (1050).
+  Home, Pairing and Upload errors still need theirs.
 - **Narrow screens:** check every screen at ~360 px wide; the Upload button row is the
   tightest.
 - **App icon and name:** `app.json` still has Expo's default icon and the name

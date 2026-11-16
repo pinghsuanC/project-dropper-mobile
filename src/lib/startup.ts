@@ -1,10 +1,10 @@
 // The start-up order Landing runs (context/details/1010): read the stored device, log in
 // with a signed challenge, check the session with /auth/me, and fill the session.
 // Returns an outcome for Landing to show; it never throws.
-import { getMe, registerDevice, requestChallenge, verifyChallenge } from '@/api/auth';
 import { ApiError } from '@/api/client';
-import { deviceFingerprint, generateKeyPair, publicKeyFor, publicKeyToPem, signChallenge } from '@/lib/crypto';
-import { deleteDeviceId, getDevice, getPrivateKey, saveDeviceId, savePrivateKey, type StoredDevice } from '@/lib/storage';
+import { generateKeyPair } from '@/lib/crypto';
+import { logIn, startSession } from '@/lib/login';
+import { clearDevice, deleteDeviceId, getDevice, getPrivateKey, savePrivateKey } from '@/lib/storage';
 import { getSession } from '@/state/session';
 
 export type StartupOutcome = 'welcome' | 'notRegistered' | 'unreachable';
@@ -41,47 +41,20 @@ async function startup(): Promise<StartupOutcome> {
     return 'notRegistered';
   }
 
-  const session = getSession();
-  session.setIdentity(device);
+  getSession().setIdentity(device);
 
-  const loggedIn = await logIn(device, privateKey);
-  if (!loggedIn) return 'notRegistered';
-  const { deviceId, token } = loggedIn;
-
-  session.setToken(token);
+  let token: string;
   try {
-    const me = await getMe();
-    session.setIdentity({ deviceId, userName: device.userName, deviceName: me.name });
-  } catch (error) {
-    session.setToken(null); // the server didn't accept it: don't keep it around
-    throw error;
-  }
-  return 'welcome';
-}
-
-/** challenge → sign → verify. On a 404, register again once with the stored key. */
-async function logIn(
-  device: StoredDevice,
-  privateKey: Uint8Array,
-): Promise<{ deviceId: string; token: string } | null> {
-  let deviceId = device.deviceId;
-  let challenge: string;
-  try {
-    challenge = await requestChallenge(deviceId);
+    token = await logIn(device.deviceId, privateKey);
   } catch (error) {
     if (!(error instanceof ApiError && error.status === 404)) throw error;
-    // The server forgot this device. Register again needs the device name it's known by.
-    if (!device.deviceName) return null;
-    deviceId = await registerDevice({
-      name: device.deviceName,
-      publicKey: publicKeyToPem(await publicKeyFor(privateKey)),
-      fingerprint: deviceFingerprint(),
-    });
-    await saveDeviceId(deviceId);
-    getSession().setIdentity({ ...device, deviceId });
-    challenge = await requestChallenge(deviceId); // a second 404 is a 4xx → notRegistered
+    // The server forgot this phone (e.g. its database was reset). Forget it here too: the
+    // device_id, the names and the key, so Register starts clean with a new key (1010).
+    await clearDevice();
+    getSession().reset();
+    return 'notRegistered';
   }
-  const signature = await signChallenge(challenge, privateKey);
-  const token = await verifyChallenge(deviceId, challenge, signature);
-  return { deviceId, token };
+
+  await startSession({ deviceId: device.deviceId, userName: device.userName }, token);
+  return 'welcome';
 }

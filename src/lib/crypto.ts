@@ -29,7 +29,7 @@ export async function generateKeyPair(): Promise<KeyPair> {
   return { privateKey, publicKey: await publicKeyFor(privateKey) };
 }
 
-/** The public key that belongs to a stored private key (e.g. to register again). */
+/** The public key that belongs to a stored private key (e.g. Register reusing a stored key). */
 export async function publicKeyFor(privateKey: Uint8Array): Promise<Uint8Array> {
   return ed.getPublicKeyAsync(privateKey);
 }

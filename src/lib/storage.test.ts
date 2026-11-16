@@ -7,7 +7,6 @@ import {
   getDevice,
   getPrivateKey,
   saveDevice,
-  saveDeviceId,
   savePrivateKey,
 } from '@/lib/storage';
 
@@ -90,14 +89,6 @@ it('only ever writes the known storage keys (no session token)', async () => {
 });
 
 describe('device_id only', () => {
-  it('saveDeviceId replaces the device_id and keeps the names and key', async () => {
-    await savePrivateKey(new Uint8Array(32).fill(3));
-    await saveDevice({ deviceId: 'old', userName: 'Ping', deviceName: 'Pixel' });
-    await saveDeviceId('new');
-    expect(await getDevice()).toEqual({ deviceId: 'new', userName: 'Ping', deviceName: 'Pixel' });
-    expect(await getPrivateKey()).toEqual(new Uint8Array(32).fill(3));
-  });
-
   it('deleteDeviceId removes only the device_id', async () => {
     await savePrivateKey(new Uint8Array(32).fill(3));
     await saveDevice({ deviceId: 'abc-123', userName: 'Ping', deviceName: 'Pixel' });
