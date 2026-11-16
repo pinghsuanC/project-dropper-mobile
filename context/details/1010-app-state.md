@@ -23,6 +23,12 @@ written only through `lib/storage.ts`. Storage keys are in `config.ts`.
 the `device_id` serves the missing-key case below. There is **no** storage function for the
 session token.
 
+`clearDevice()` also deletes the **private key**. Unregister leaves the device's row on the
+server as `revoked`, still holding its public key, which must stay unique: registering
+again with the same key would get a 409. So Register needs a new key after an unregister
+(server `API.md`, `POST /auth/unregister`). The re-register after a 404 is different: the
+server has no row for the key, so the same key works, and `saveDeviceId()` keeps it.
+
 ## Lives in session
 
 | Item | Set by | Notes |

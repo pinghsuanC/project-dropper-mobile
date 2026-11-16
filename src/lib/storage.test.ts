@@ -52,14 +52,14 @@ describe('device record', () => {
     expect(await getDevice()).toEqual({ deviceId: 'abc-123', userName: null, deviceName: null });
   });
 
-  it('clearDevice removes the device_id and names but keeps the private key', async () => {
+  it('clearDevice removes the device_id, names and private key', async () => {
     await savePrivateKey(new Uint8Array(32).fill(7));
     await saveDevice({ deviceId: 'abc-123', userName: 'Ping', deviceName: 'Pixel' });
     await clearDevice();
     expect(await getDevice()).toBeNull();
     expect(store.has(STORAGE_KEYS.userName)).toBe(false);
     expect(store.has(STORAGE_KEYS.deviceName)).toBe(false);
-    expect(await getPrivateKey()).toEqual(new Uint8Array(32).fill(7));
+    expect(await getPrivateKey()).toBeNull();
   });
 });
 
