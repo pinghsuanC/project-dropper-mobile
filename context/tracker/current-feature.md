@@ -15,6 +15,9 @@
 
 # History
 
+- 2026-11-16: Register screen: name the phone, make its key, register it with the server, save it and log in, with error dialogs; a phone the server has forgotten goes back to Register
+- 2026-11-16: Register this phone: name it, make its key, register with the server, save it and log in, with error dialogs; a phone the server has forgotten is cleared and sent back to Register
+- 2026-11-15: Add a text field with a character counter and an error dialog, the pieces the Register screen is built from
 - 2026-11-15: The README opens with the app's flow: the five main screens, a flowchart and a sentence per step, plus an up-to-date overview and open decisions
 - 2026-11-15: Routes and basic pages: a route for every screen, the Windows 98 theme and first UI components, log-in at start-up, and a dev testing menu that opens any screen state
 - 2026-11-14: Screens read the testing menu's state through one typed hook and show it; release builds ignore it

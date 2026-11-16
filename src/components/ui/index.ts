@@ -5,8 +5,10 @@ export { Text } from './primitives/Text';
 
 export { Button, type ButtonVariant } from './controls/Button';
 export { Gif, type GifSize } from './controls/Gif';
+export { TextField } from './controls/TextField';
 export { TitleBar } from './controls/TitleBar';
 export { Window } from './controls/Window';
 
+export { Dialog, type DialogKind } from './patterns/Dialog';
 export { ResultPopup } from './patterns/ResultPopup';
 export { Terminal } from './patterns/Terminal';

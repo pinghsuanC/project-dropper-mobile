@@ -1,6 +1,9 @@
 # 1010: App state and session
 
-Accepted, implemented · updated 2026-11-14 · Part of [1000 App](1000-app.md)
+Accepted, implemented · updated 2026-11-16 (404 at start-up now forgets the phone) · Part of [1000 App](1000-app.md)
+
+Register's own flow (form, register → save → log in, error dialogs) is in
+[1050](1050-register.md).
 
 Two places only: **storage** (survives closing the app) and the **session** (memory, one
 global Zustand store, [1030](1030-session-store.md)). Screens never look things up
@@ -19,15 +22,15 @@ written only through `lib/storage.ts`. Storage keys are in `config.ts`.
 | Device name | On Register | Sent to the server as `name` on register (`/auth/me` returns it). Read once at start, copied into the session |
 
 `getDevice()` returns `{ deviceId, userName, deviceName }`, or `null` when there's no
-`device_id`. `saveDevice()` / `clearDevice()` serve Register and unregister; deleting just
-the `device_id` serves the missing-key case below. There is **no** storage function for the
+`device_id`. `saveDevice()` serves Register; `clearDevice()` serves unregister and a 404 at
+start-up; deleting just the `device_id` serves the missing-key case below. There is **no** storage function for the
 session token.
 
 `clearDevice()` also deletes the **private key**. Unregister leaves the device's row on the
 server as `revoked`, still holding its public key, which must stay unique: registering
 again with the same key would get a 409. So Register needs a new key after an unregister
-(server `API.md`, `POST /auth/unregister`). The re-register after a 404 is different: the
-server has no row for the key, so the same key works, and `saveDeviceId()` keeps it.
+(server `API.md`, `POST /auth/unregister`). A 404 at start-up clears everything the same
+way (decided 2026-11-16), so Register always starts with a new key.
 
 ## Lives in session
 
@@ -49,8 +52,8 @@ getDevice() → session (read once)
  │                                                  → Not registered → Register
  └─ device_id + key
      POST /auth/challenge
-     ├─ 404 → re-register ONCE (stored device name, stored key), save the new device_id,
-     │        retry login; a second 404 or a 4xx ──→ Not registered → Register
+     ├─ 404 (server forgot this phone) → clearDevice() (device_id, names, key),
+     │        session reset ────────────────────────→ Not registered → Register
      ├─ any other 4xx (403 revoked, 422, …) ────────→ Not registered → Register
      └─ challenge → sign → POST /auth/verify-challenge
          ├─ any 4xx (401, 403, …) ──────────────────→ Not registered → Register
@@ -67,14 +70,17 @@ On any call: network error, timeout, 5xx, or no server URL configured
 - **Unreachable** = no usable answer from the server: a network error, timeout or 5xx on
   any call, or a missing `EXPO_PUBLIC_API_BASE_URL`. A 5xx is "unreachable" because
   registering again can't fix a broken server. No separate `GET /health` call.
-- **Re-register** sends the stored device name as `name`; the user name isn't needed (the
-  server never gets it). No stored device name → Register instead.
+- **A 404 on the challenge means the server forgot this phone** (e.g. its database was
+  reset). Decided 2026-11-16, replacing the earlier "re-register once with the stored name
+  and key": the phone forgets it too (`clearDevice()`: `device_id`, both names and the
+  private key; session reset) and Landing shows Not registered → Register, where the user
+  names it again and a new key is made. Only a 404 does this: a 403 (revoked), any other
+  4xx, or a 5xx keeps the stored device.
 - **Missing private key** with a `device_id`: the old identity can't sign any more, so make
   and save a new key, delete only the `device_id` (names stay), and go to Register.
-- **`/auth/me` after login** (also after a re-register's login) confirms the new token
-  works before Landing says Welcome, and gives the server's device `name`. That name goes
-  into the session only; storage keeps its own copy for re-registering, when there's no
-  token to call `/auth/me` with. Later 401 / 403 (24 h expiry, revocation) still surface
+- **`/auth/me` after login** confirms the new token works before Landing says Welcome,
+  and gives the server's device `name`. That name goes into the session only; storage
+  keeps the name typed on Register. Later 401 / 403 (24 h expiry, revocation) still surface
   on whichever protected call hits them.
 - **Missing user name** is fine everywhere: the session holds `null` (so `setIdentity`
   takes nullable names) and Welcome uses its no-name message.

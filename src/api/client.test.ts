@@ -1,4 +1,4 @@
-import { ApiError, request, UnreachableError } from '@/api/client';
+import { ApiError, detailText, request, UnreachableError } from '@/api/client';
 import { REQUEST_TIMEOUT_MS } from '@/constants/config';
 import { getSession } from '@/state/session';
 
@@ -86,6 +86,28 @@ describe('errors', () => {
     const detail = [{ loc: ['body', 'device_id'], msg: 'Field required', type: 'missing' }];
     respond(422, { detail });
     await expect(request('/x')).rejects.toMatchObject({ status: 422, detail });
+  });
+
+  it('detailText: a string detail as is', () => {
+    expect(detailText('Public key already registered')).toBe('Public key already registered');
+  });
+
+  it('detailText: a 422 list as "loc: msg" lines, without the leading "body"', () => {
+    const detail = [
+      { loc: ['body', 'public_key'], msg: 'Field required', type: 'missing' },
+      { loc: ['body', 'files', 0, 'size'], msg: 'Input should be a valid integer', type: 'int_parsing' },
+    ];
+    expect(detailText(detail)).toBe('public_key: Field required\nfiles.0.size: Input should be a valid integer');
+  });
+
+  it('detailText: a 422 entry with only "body" in its loc is just the message', () => {
+    expect(detailText([{ loc: ['body'], msg: 'Invalid JSON', type: 'json_invalid' }])).toBe('Invalid JSON');
+  });
+
+  it('detailText: nothing for a null or empty detail', () => {
+    expect(detailText(null)).toBeUndefined();
+    expect(detailText('')).toBeUndefined();
+    expect(detailText([])).toBeUndefined();
   });
 
   it('uses a null detail when the error body is not JSON', async () => {

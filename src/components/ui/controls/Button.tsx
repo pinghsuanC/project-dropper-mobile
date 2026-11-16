@@ -1,6 +1,6 @@
 // Bevelled push button (2010). Pressed: the bevel sinks and the content moves 1px with a
 // transform, so the button never changes size. Disabled: greyed label, no presses.
-import { useState, type ReactNode } from 'react';
+import { useState, type ComponentRef, type ReactNode, type Ref } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { sizes, spacing } from '@/theme';
@@ -19,17 +19,20 @@ type Props = {
   icon?: ReactNode;
   /** Size and position (e.g. a fixed width). */
   style?: StyleProp<ViewStyle>;
+  /** The pressable view, e.g. to move screen-reader focus to it. */
+  ref?: Ref<ComponentRef<typeof View>>;
   testID?: string;
 };
 
 const PRESS_SHIFT = 1;
 
-export function Button({ label, onPress, disabled = false, variant = 'default', icon, style, testID }: Props) {
+export function Button({ label, onPress, disabled = false, variant = 'default', icon, style, ref, testID }: Props) {
   const [pressed, setPressed] = useState(false);
   const sunk = pressed && !disabled;
 
   return (
     <Pressable
+      ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled }}

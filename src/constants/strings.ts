@@ -12,6 +12,18 @@ export const strings = {
       maximize: 'Maximize',
       close: 'Close',
     },
+    textField: {
+      /** The counter under a field with a length limit. */
+      count: (length: number, max: number) => `${length}/${max}`,
+      /** What screen readers say for the counter. */
+      countLabel: (length: number, max: number) => `${length} of ${max} characters`,
+    },
+    dialog: {
+      /** Default heading of an error dialog. */
+      error: 'Error',
+      code: 'Code',
+      details: 'Details',
+    },
   },
   landing: {
     connecting: 'Trying to connect ...',
@@ -25,8 +37,25 @@ export const strings = {
     retry: 'Retry',
   },
   register: {
-    title: 'Register',
-    toHome: 'Register this phone',
+    title: 'Welcome to File Dropper',
+    intro:
+      "This phone isn't registered yet. Tell us your name, and give this phone a name so your desktop can recognize it.",
+    userNameLabel: 'Your name',
+    userNamePlaceholder: 'e.g. Alex',
+    userNameHint: 'What the app calls you.',
+    deviceNameLabel: 'Device name',
+    deviceNameDefault: 'My Android phone',
+    deviceNameHint: 'Letters, numbers, spaces, - and _ only.',
+    submit: 'Register this phone',
+    userNameRequired: 'Please enter your name.',
+    deviceNameRequired: 'Please enter a device name.',
+    creatingKeys: 'Creating keys…',
+    registering: 'Registering…',
+    registered: 'Registered!',
+    unreachable:
+      "Couldn't reach your server, so this phone wasn't registered. Make sure the server is running, then try again.",
+    serverError: "The server couldn't register this phone.",
+    ok: 'OK',
   },
   home: {
     title: 'Home',
@@ -65,6 +94,9 @@ export const strings = {
     buttonLabel: 'Open testing menu',
     /** Shown on a placeholder screen opened in a test state from the menu. */
     stateLine: (state: string) => `Test state: ${state}`,
+    /** Register's server-error test state shows these in the dialog's code box. */
+    registerSampleCode: 'XXX',
+    registerSampleDetails: '<detail from the server goes here>',
     sections: {
       landing: 'Landing',
       register: 'Register',

@@ -38,6 +38,12 @@ export const REQUEST_TIMEOUT_MS = 10_000;
 /** How long Landing's Welcome / Not registered popups stay before redirecting. */
 export const POPUP_REDIRECT_MS = 2_000;
 
+/** Most characters in the user name and the device name (Register, 1050). */
+export const NAME_MAX_LENGTH = 20;
+
+/** How long Register shows "Registered!" before going Home. */
+export const REGISTERED_REDIRECT_MS = 700;
+
 /** expo-secure-store keys. Allowed characters: letters, digits, `.`, `-`, `_`. */
 export const STORAGE_KEYS = {
   privateKey: 'device.private_key',
