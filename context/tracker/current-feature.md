@@ -2,8 +2,8 @@
 
 ## Scope
 
-- Feature: Register screen: name this phone, make its key, register it with the server, log in and go to Home
-- Feature branch: feature-branch-register
+- Feature: 
+- Feature branch: 
 - Parts: [current-feature-parts.md](current-feature-parts.md)
 
 ## Current part
@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-16: Register screen: name the phone, make its key, register it with the server, save it and log in, with error dialogs; a phone the server has forgotten goes back to Register
 - 2026-11-16: Register this phone: name it, make its key, register with the server, save it and log in, with error dialogs; a phone the server has forgotten is cleared and sent back to Register
 - 2026-11-15: Add a text field with a character counter and an error dialog, the pieces the Register screen is built from
 - 2026-11-15: The README opens with the app's flow: the five main screens, a flowchart and a sentence per step, plus an up-to-date overview and open decisions

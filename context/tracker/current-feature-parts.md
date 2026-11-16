@@ -11,5 +11,3 @@ the first one into ## Details of current-feature.md. -->
 
 ## Done
 
-- 2026-11-16: Part 2: Register flow and screen
-- 2026-11-15: Part 1: TextField and Dialog components
