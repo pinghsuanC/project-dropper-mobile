@@ -1,7 +1,8 @@
 // The Upload screen, "Pending upload" (context/details/1090). Part 1: the queue, picking files,
 // the size limit, search, the status bar, the Back window, and every look the testing menu
 // opens. Part 2: Upload, the queue and sending state from the session store (so they outlive
-// the screen), and the result popups. The send loop itself is tested in lib/sendQueue.
+// the screen), and the result popups. Part 3: Failed rows, Retry failed, the "N of M sent"
+// popup, and failed files dropped on leaving. The send loop itself is tested in lib/sendQueue.
 import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 import * as picker from 'expo-document-picker';
 import { router } from 'expo-router';
@@ -281,7 +282,7 @@ describe('sending (from the store)', () => {
       queued('a.txt', { status: current === 0 ? 'waiting' : 'sending', progress: 0.4 }),
       queued('b.txt', { status: 'waiting' }),
     ]);
-    getSession().setUploadSending({ current, total: 2 });
+    getSession().setUploadSending({ run: 1, current, total: 2 });
     await open();
   };
 
@@ -345,20 +346,177 @@ describe('result popups (from the store)', () => {
     expect(screen.getByText(u.sent(3))).toBeTruthy();
   });
 
-  test('failed: the error popup; the files are queued again', async () => {
-    getSession().setUploadQueue([queued('a.txt')]);
-    getSession().setUploadOutcome({ kind: 'failed' });
+  test('partial: the error popup "2 of 3 sent. Please retry." over the Failed row (upload-partial-failed.png)', async () => {
+    getSession().setUploadQueue([queued('screen-recording.mp4', { status: 'failed' })]);
+    getSession().setUploadOutcome({ kind: 'partial', sent: 2, total: 3 });
     await open();
-    expect(screen.getByText(u.uploadFailed)).toBeTruthy();
-    expect(within(list()).getByText('a.txt', HIDDEN)).toBeTruthy();
+    expect(screen.getByText(u.popupTitle)).toBeTruthy();
+    expect(screen.getByText(u.partial(2, 3))).toBeTruthy();
+    const failed = within(list()).getByText(u.failed, HIDDEN);
+    expect(StyleSheet.flatten(failed.props.style).color).toBe(tones.error);
+  });
+
+  test('OK on the partial popup keeps the failed files', async () => {
+    getSession().setUploadQueue([queued('a.txt', { status: 'failed' })]);
+    getSession().setUploadOutcome({ kind: 'partial', sent: 0, total: 1 });
+    await open();
+    await press(u.ok);
+    expect(dialog()).toBeNull();
+    expect(getSession().uploadQueue.map((f) => f.status)).toEqual(['failed']);
   });
 
   test('Android Back closes the result popup and clears the outcome', async () => {
-    getSession().setUploadOutcome({ kind: 'failed' });
+    getSession().setUploadOutcome({ kind: 'partial', sent: 1, total: 2 });
     await open();
     await act(async () => backHandlers.at(-1)?.(BACK_EVENT));
     expect(dialog()).toBeNull();
     expect(getSession().uploadOutcome).toBeNull();
+  });
+});
+
+describe('Retry failed', () => {
+  const withFailed = async (connected: ConnectionResult = 'paired') => {
+    checkMock.mockResolvedValue(connected);
+    getSession().setUploadQueue([queued('a.txt', { status: 'failed' }), queued('b.txt', { status: 'failed' })]);
+    await open();
+  };
+
+  test('takes the place of Upload; Clear all and Add… are hidden (the prototype\'s partial mode)', async () => {
+    await withFailed();
+    expect(button(u.retryFailed)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: u.upload })).toBeNull();
+    expect(screen.queryByRole('button', { name: u.clearAll })).toBeNull();
+    expect(screen.queryByRole('button', { name: u.add })).toBeNull();
+  });
+
+  test('failed rows have no ✕', async () => {
+    await withFailed();
+    expect(screen.queryByRole('button', { name: u.remove('a.txt') })).toBeNull();
+  });
+
+  test('enabled when connected; pressing it sends the failed files', async () => {
+    await withFailed();
+    expect(disabled(u.retryFailed)).toBe(false);
+    await press(u.retryFailed);
+    expect(sendMock).toHaveBeenCalledWith('failed');
+  });
+
+  test.each(['unpaired', 'serverError'] as ConnectionResult[])('disabled when %s', async (result) => {
+    await withFailed(result);
+    expect(disabled(u.retryFailed)).toBe(true);
+  });
+
+  test('disabled while the check runs', async () => {
+    checkMock.mockReturnValue(new Promise(() => {}));
+    getSession().setUploadQueue([queued('a.txt', { status: 'failed' })]);
+    await open();
+    expect(disabled(u.retryFailed)).toBe(true);
+  });
+
+  test('while a retry is sending, the sending look is back (Sending…, Add… and Clear all disabled)', async () => {
+    getSession().setUploadQueue([queued('a.txt', { status: 'sending', progress: 0.2 })]);
+    getSession().setUploadSending({ run: 1, current: 1, total: 1 });
+    await open();
+    expect(button(u.sending)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: u.retryFailed })).toBeNull();
+    expect(disabled(u.add)).toBe(true);
+  });
+
+  test('while a send runs, its look wins even next to a Failed file', async () => {
+    getSession().setUploadQueue([queued('a.txt', { status: 'failed' }), queued('b.txt', { status: 'sending', progress: 0.3 })]);
+    getSession().setUploadSending({ run: 1, current: 1, total: 1 });
+    await open();
+    expect(button(u.sending)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: u.retryFailed })).toBeNull();
+  });
+
+  test('once no file is failed, Upload, Clear all and Add… come back', async () => {
+    await withFailed();
+    await act(async () => getSession().setUploadQueue([]));
+    expect(button(u.upload)).toBeTruthy();
+    expect(button(u.clearAll)).toBeTruthy();
+    expect(button(u.add)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: u.retryFailed })).toBeNull();
+  });
+});
+
+describe('leaving drops failed files (the Back note)', () => {
+  const store = () => getSession().uploadQueue.map((f) => `${f.name}:${f.status}`);
+
+  test('Confirm: failed files are dropped; queued ones stay', async () => {
+    await renderRouter('./src/app', { initialUrl: '/home' });
+    getSession().setUploadQueue([queued('a.txt', { status: 'failed' }), queued('b.txt')]);
+    await act(() => router.push('/upload'));
+    await press(u.confirm);
+    expect(screen).toHavePathname('/home');
+    expect(store()).toEqual(['b.txt:queued']);
+  });
+
+  test('the main window ✕: failed files are dropped', async () => {
+    getSession().setUploadQueue([queued('a.txt', { status: 'failed' })]);
+    await open();
+    const closes = screen.getAllByRole('button', { name: strings.ui.titleBar.close });
+    await fireEvent.press(closes[0]);
+    expect(store()).toEqual([]);
+  });
+
+  test('going to another screen (the taskbar) drops them too', async () => {
+    getSession().setUploadQueue([queued('a.txt', { status: 'failed' })]);
+    await open();
+    await act(() => router.push('/properties'));
+    expect(store()).toEqual([]);
+  });
+
+  test('a running send keeps its waiting and sending files', async () => {
+    getSession().setUploadQueue([queued('a.txt', { status: 'sending', progress: 0.5 }), queued('b.txt', { status: 'waiting' })]);
+    getSession().setUploadSending({ run: 1, current: 1, total: 2 });
+    await open();
+    await act(() => router.dismissTo('/home'));
+    expect(store()).toEqual(['a.txt:sending', 'b.txt:waiting']);
+  });
+
+  test('leaving while the "Please retry" popup is open clears it too: no popup over an empty queue on return', async () => {
+    getSession().setUploadQueue([queued('a.txt', { status: 'failed' })]);
+    getSession().setUploadOutcome({ kind: 'partial', sent: 0, total: 1 });
+    await open();
+    await act(() => router.push('/properties'));
+    expect(getSession().uploadOutcome).toBeNull();
+    await act(() => router.push('/upload'));
+    expect(screen.queryByText(u.partial(0, 1))).toBeNull();
+  });
+
+  test('an "all sent" popup is kept when leaving: it is still true on return', async () => {
+    getSession().setUploadOutcome({ kind: 'sent', count: 2 });
+    await open();
+    await act(() => router.push('/properties'));
+    expect(getSession().uploadOutcome).toEqual({ kind: 'sent', count: 2 });
+  });
+
+  test('a partial outcome set while away (a send that ended after leaving) shows on return', async () => {
+    await open();
+    await act(() => router.push('/properties'));
+    await act(async () => {
+      getSession().setUploadQueue([queued('a.txt', { status: 'failed' })]);
+      getSession().setUploadOutcome({ kind: 'partial', sent: 1, total: 2 });
+    });
+    await act(() => router.push('/upload'));
+    expect(screen.getByText(u.partial(1, 2))).toBeTruthy();
+    // Behind the popup, so hidden from screen readers until OK. (The first /upload is still in
+    // the stack under Properties, so there can be two.)
+    expect(screen.getAllByRole('button', { name: u.retryFailed, ...HIDDEN }).length).toBeGreaterThan(0);
+  });
+
+  test('staying on the screen keeps them', async () => {
+    getSession().setUploadQueue([queued('a.txt', { status: 'failed' })]);
+    await open();
+    expect(store()).toEqual(['a.txt:failed']);
+  });
+
+  test('a testing-menu look never touches the store', async () => {
+    getSession().setUploadQueue([queued('real.txt', { status: 'failed' })]);
+    await open('?state=partialFailed');
+    await act(() => router.dismissTo('/home'));
+    expect(store()).toEqual(['real.txt:failed']);
   });
 });
 
@@ -447,6 +605,14 @@ describe('testing-menu looks', () => {
   test('no rolling bar when nothing is sending', async () => {
     await open();
     expect(screen.queryByTestId('upload-running')).toBeNull();
+  });
+
+  test('partialFailed: Retry failed in place of Upload, disabled (a look never sends)', async () => {
+    await open('?state=partialFailed');
+    await press(u.ok);
+    expect(button(u.retryFailed)).toBeTruthy();
+    expect(disabled(u.retryFailed)).toBe(true);
+    expect(screen.queryByRole('button', { name: u.add })).toBeNull();
   });
 
   test('partialFailed: a Failed row and the "2 of 3 sent" popup', async () => {

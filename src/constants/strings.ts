@@ -152,6 +152,8 @@ export const strings = {
     add: 'Add…',
     upload: 'Upload',
     sending: 'Sending…',
+    /** Takes Upload's place while the queue has failed files (it sends only those). */
+    retryFailed: 'Retry failed',
     /** A queued row's ✕, for screen readers. */
     remove: (name: string) => `Remove ${name}`,
     waiting: 'Waiting',
@@ -179,8 +181,6 @@ export const strings = {
     complete: 'Upload complete',
     sent: (n: number) => (n === 1 ? '1 file sent to your PC.' : `${n} files sent to your PC.`),
     partial: (sent: number, total: number) => `${sent} of ${total} sent. Please retry.`,
-    /** Any failure, until Part 3 shows which files failed. */
-    uploadFailed: 'Upload failed. Please try again.',
     ok: 'OK',
     /** The Back window. */
     backTitle: 'Back',

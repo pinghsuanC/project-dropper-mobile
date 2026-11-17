@@ -83,7 +83,7 @@ describe('session store', () => {
     session.setPairedWith({ pcName: 'PC', deviceId: 'pc-1' });
     session.setQuote('Q');
     session.setUploadQueue([FILE]);
-    session.setUploadSending({ current: 1, total: 1 });
+    session.setUploadSending({ run: 1, current: 1, total: 1 });
     session.setUploadOutcome({ kind: 'sent', count: 1 });
     getSession().reset();
     const after = getSession();
@@ -122,15 +122,15 @@ describe('upload slice (1090: the queue outlives the Upload screen)', () => {
   });
 
   test('setUploadSending sets and clears the running count', () => {
-    getSession().setUploadSending({ current: 2, total: 3 });
-    expect(getSession().uploadSending).toEqual({ current: 2, total: 3 });
+    getSession().setUploadSending({ run: 7, current: 2, total: 3 });
+    expect(getSession().uploadSending).toEqual({ run: 7, current: 2, total: 3 });
     getSession().setUploadSending(null);
     expect(getSession().uploadSending).toBeNull();
   });
 
   test('setUploadOutcome sets and clears the last result', () => {
-    getSession().setUploadOutcome({ kind: 'failed' });
-    expect(getSession().uploadOutcome).toEqual({ kind: 'failed' });
+    getSession().setUploadOutcome({ kind: 'partial', sent: 2, total: 3 });
+    expect(getSession().uploadOutcome).toEqual({ kind: 'partial', sent: 2, total: 3 });
     getSession().setUploadOutcome(null);
     expect(getSession().uploadOutcome).toBeNull();
   });

@@ -1,6 +1,6 @@
 # 1090: Upload
 
-Accepted, Parts 1 (UI) and 2 (sending) implemented · 2026-11-17 · Part of [1000 App](1000-app.md)
+Accepted, implemented (Parts 1 UI, 2 sending, 3 failures and Retry) · 2026-11-17 · Part of [1000 App](1000-app.md)
 
 The "Pending upload" screen (`/upload`, in the `(taskbar)` group), opened from Home's
 "Do you want to upload? Yes". The user picks files into a queue and sends them to the
@@ -34,6 +34,7 @@ Laid out like Server status ([1070](1070-server-files.md)), and shares its name 
 | Clear all | the queue isn't empty and nothing is sending |
 | Add… | nothing is sending |
 | Upload | connected (`paired`), a `queued` file, nothing sending, not a testing-menu look |
+| Retry failed | shown in Upload's place while a file is Failed (Clear all and Add… hidden); enabled when connected, not a look |
 
 ## The queue (`lib/uploadQueue.ts`)
 
@@ -68,8 +69,8 @@ Back closes it.
 | Popup | Kind | Title / heading | Message |
 |---|---|---|---|
 | File(s) left out of a pick | error | Error | see the queue rules |
-| Partial failure (Part 3) | error | Upload / Error | "2 of 3 sent. Please retry." |
-| Success (Part 2) | info | Upload / Upload complete | "3 files sent to your PC." |
+| Some or all files failed | error | Upload / Error | "2 of 3 sent. Please retry." ("0 of 3…" when none) |
+| All sent | info | Upload / Upload complete | "3 files sent to your PC." ("1 file…") |
 
 ## Testing menu
 
@@ -77,14 +78,14 @@ Back closes it.
 (`components/dev/mockUploadQueue.ts`), skipping the connection check (shown as
 Connected). Plain `/upload` is the real empty start.
 
-## Sending (Part 2, `lib/sendQueue.ts`)
+## Sending (`lib/sendQueue.ts`)
 
 `sendQueue()` runs outside React and reports into the session store (`uploadQueue`,
 `uploadSending`, `uploadOutcome`, 1030), so a send carries on when the user leaves `/upload`
 and the screen shows the same state on return. It never throws.
 
-1. Every `queued` file turns `waiting`; `uploadSending` = 0 of m: the status bar reads
-   "Preparing…".
+1. The files to send (`queued` for Upload, `failed` for Retry failed) turn `waiting`;
+   `uploadSending` = 0 of m: the status bar reads "Preparing…".
 2. **Checksum** per file: `fileChecksum(uri)` in `lib/crypto.ts`, `expo-file-system`
    `File.digest('SHA-256')`. Hashed natively in 64 KB reads, so a 100 MB file never sits
    in JS memory; checked to be 64 lowercase hex characters.
@@ -101,20 +102,45 @@ and the screen shows the same state on return. It never throws.
    100 MB upload is never cut (the server calls keep `api/client.ts`'s 10 s timeout).
 5. A file whose PUT worked **leaves the list** (`upload-in-progress.png`: "Sending 2 of 3"
    over two rows). One that failed reads "Waiting" until the send ends.
-6. One **`POST /files/finish-batch-upload`** with the `file_id`s whose PUT worked.
-7. All confirmed: outcome `sent` → the info popup "N files sent to your PC.". OK (or
-   Android Back) clears the outcome.
+6. One **`POST /files/finish-batch-upload`** with the `file_id`s whose PUT worked. It is
+   strict on the server: a 404 / 409 marks none, so every file of that send fails.
+7. All confirmed: outcome `sent` → the info popup "N files sent to your PC.". Otherwise
+   see Failures. OK (or Android Back) clears the outcome.
 
-**Failure stopgap (until Part 3):** anything else going wrong (a checksum, prepare, a PUT,
-finish, offline) leaves those files unconfirmed. Every unconfirmed file of the send goes
-back to `queued`, in its first order, at the front of the queue, and the outcome is `failed`:
-the error popup "Upload failed. Please try again.". Old server rows a failed send left in
-`pending` stay until `/files/cancel` exists.
+## Failures and Retry (Part 3)
+
+- **Failed:** every file of a send that `finish-batch-upload` didn't confirm ends `failed`,
+  whatever went wrong (a checksum, prepare, its PUT, finish, offline, 401 / 403 / 404 / 409),
+  in its first order at the front of the queue. Failed rows read "Failed" in the error tone,
+  with no ✕.
+- **Popup:** outcome `partial` `{ sent, total }` → "2 of 3 sent. Please retry."
+  (`upload-partial-failed.png`), "0 of 3…" when none got through.
+- **Retry failed** (the HTML prototype's partial mode): while the queue has a Failed file and
+  nothing is sending, it takes Upload's place and Clear all and Add… are hidden. It sends only
+  the failed files, as a new send (fresh checksum and prepare); its look and outcomes are
+  Upload's.
+- **No message per status:** a 401 (session over 24 h), 403 (revoked) or 404 (PC gone) is a
+  failure like any other, as on Home (1060) and Server status (1070); logging in again is left
+  for later.
+- **Leaving** `/upload` (losing focus: Confirm, ✕, the taskbar, Android Back) drops the
+  failed files (`dropFailed`) and a "Please retry" outcome with them, so it can't come back
+  over an empty queue (the taskbar sits outside the popup); an "all sent" popup stays. A
+  running send's waiting and sending files stay. A file that fails after you've left stays
+  Failed, with its popup, until you next leave.
+- **Server rows:** each failed send leaves `pending` rows; Server status shows them as
+  Incomplete (1070) until `POST /files/cancel` (🚧) or the server's cleanup sweep exists.
+
+## A send that is replaced
+
+Each send has a run id in `uploadSending`. After every wait (checksum, prepare, a PUT, its
+progress, finish) the send checks it's still the running one; if a reset replaced it (the
+phone sent back to Register, 1010) it stops and writes nothing more, so a stale send never
+refills a reset queue or touches a newer send's files.
 
 A testing-menu look keeps its own mock queue: it never reads or changes the store, and its
 Upload stays disabled.
 
-## Still open (Part 3)
+## Not done
 
-Failed rows, the partial popup for real ("2 of 3 sent"), Retry, what 401 / 403 / 404 / 409
-show, dropping failed files on leaving: see the parts file.
+Logging in again after a 401; cancelling a send; parallel PUTs; chunking (Future Features);
+deleting the picker's cache copies (Android clears its cache).

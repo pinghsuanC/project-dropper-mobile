@@ -1,7 +1,8 @@
-// Sending the Upload queue (1090, Part 2): checksum each file, one prepare-batch-upload, a PUT
-// per file one at a time, then finish-batch-upload with the files whose PUT worked. It reports
-// into the session store (so it outlives the screen) and never throws. Part 2's failure
-// stopgap: every file not confirmed goes back to `queued`, outcome "failed".
+// Sending the Upload queue (1090): checksum each file, one prepare-batch-upload, a PUT per file
+// one at a time, then finish-batch-upload with the files whose PUT worked. It reports into the
+// session store (so it outlives the screen) and never throws. Part 3: every file not confirmed
+// ends `failed` with a "sent of total" outcome; `sendQueue('failed')` is Retry failed; a send
+// whose run was replaced (a reset) writes nothing more.
 import { ApiError, UnreachableError } from '@/api/client';
 import { finishBatchUpload, prepareBatchUpload } from '@/api/files';
 import { putFile, UploadError } from '@/api/upload';
@@ -45,6 +46,11 @@ function prepareEchoes() {
 
 const session = () => getSession();
 const queue = () => session().uploadQueue;
+/** The running count as the screen shows it (the run id left out). */
+const count = () => {
+  const sending = session().uploadSending;
+  return sending && { current: sending.current, total: sending.total };
+};
 
 beforeEach(() => {
   jest.resetAllMocks();
@@ -116,7 +122,7 @@ describe('progress in the store', () => {
   test('on start every file is waiting and the count reads 0 (preparing)', async () => {
     let seen: { statuses: string[]; sending: unknown } | null = null;
     checksumMock.mockImplementation(async (uri) => {
-      seen ??= { statuses: queue().map((f) => f.status), sending: session().uploadSending };
+      seen ??= { statuses: queue().map((f) => f.status), sending: count() };
       return hashOf(uri);
     });
     await sendQueue();
@@ -126,7 +132,7 @@ describe('progress in the store', () => {
   test('during each PUT: that file is sending, the ones after it wait, and the count is n of m', async () => {
     const seen: { names: string[]; statuses: string[]; sending: unknown }[] = [];
     putMock.mockImplementation(async () => {
-      seen.push({ names: queue().map((f) => f.name), statuses: queue().map((f) => f.status), sending: session().uploadSending });
+      seen.push({ names: queue().map((f) => f.name), statuses: queue().map((f) => f.status), sending: count() });
     });
     await sendQueue();
     // A file whose PUT worked leaves the list (upload-in-progress.png: "Sending 2 of 3", 2 rows).
@@ -175,12 +181,12 @@ describe('all sent', () => {
   });
 });
 
-describe('failures (Part 2 stopgap: back to queued, outcome failed; never throws)', () => {
-  const allQueuedAgain = () => {
-    expect(queue().map((f) => f.status)).toEqual(['queued', 'queued', 'queued']);
+describe('failures: the files not confirmed end Failed, outcome "sent of total"; never throws', () => {
+  const allFailed = () => {
+    expect(queue().map((f) => `${f.name}:${f.status}`)).toEqual(['a.png:failed', 'b.bin:failed', 'c.txt:failed']);
     expect(queue().every((f) => f.progress === undefined)).toBe(true);
     expect(session().uploadSending).toBeNull();
-    expect(session().uploadOutcome).toEqual({ kind: 'failed' });
+    expect(session().uploadOutcome).toEqual({ kind: 'partial', sent: 0, total: 3 });
   };
 
   test('a checksum fails: nothing is prepared or PUT', async () => {
@@ -188,38 +194,39 @@ describe('failures (Part 2 stopgap: back to queued, outcome failed; never throws
     await expect(sendQueue()).resolves.toBeUndefined();
     expect(prepareMock).not.toHaveBeenCalled();
     expect(putMock).not.toHaveBeenCalled();
-    allQueuedAgain();
+    allFailed();
   });
 
   test.each([
     ['404 receiver gone', new ApiError(404, 'x')],
     ['401', new ApiError(401, 'x')],
+    ['403', new ApiError(403, 'x')],
     ['offline', new UnreachableError()],
   ])('prepare fails (%s): nothing is PUT', async (_name, error) => {
     prepareMock.mockRejectedValueOnce(error);
     await expect(sendQueue()).resolves.toBeUndefined();
     expect(putMock).not.toHaveBeenCalled();
     expect(finishMock).not.toHaveBeenCalled();
-    allQueuedAgain();
+    allFailed();
   });
 
   test('prepare answers without a file: none is PUT', async () => {
     prepareMock.mockResolvedValueOnce([{ client_ref: 'q0', file_id: 'id-q0', upload_url: urlOf('q0') }]);
     await sendQueue();
     expect(putMock).not.toHaveBeenCalled();
-    allQueuedAgain();
+    allFailed();
   });
 
-  test('one PUT fails: the others still go, finish gets only theirs; the failed one is queued again', async () => {
+  test('one PUT fails: the others still go and are sent; that one ends Failed, "2 of 3"', async () => {
     putMock.mockImplementation(async (uri) => {
       if (uri === B.uri) throw new UploadError(403);
     });
     await sendQueue();
     expect(putMock).toHaveBeenCalledTimes(3);
     expect(finishMock).toHaveBeenCalledWith([idOf('q0'), idOf('q2')]);
-    expect(queue()).toEqual([B]);
+    expect(queue()).toEqual([{ ...B, status: 'failed' }]);
     expect(session().uploadSending).toBeNull();
-    expect(session().uploadOutcome).toEqual({ kind: 'failed' });
+    expect(session().uploadOutcome).toEqual({ kind: 'partial', sent: 2, total: 3 });
   });
 
   test('while the next file sends, a failed one reads Waiting (not sending, no ✕)', async () => {
@@ -236,20 +243,183 @@ describe('failures (Part 2 stopgap: back to queued, outcome failed; never throws
     putMock.mockRejectedValue(new UploadError(null));
     await sendQueue();
     expect(finishMock).not.toHaveBeenCalled();
-    allQueuedAgain();
+    allFailed();
   });
 
-  test('finish fails (409, strict: none marked): every file is queued again', async () => {
-    finishMock.mockRejectedValueOnce(new ApiError(409, 'x'));
+  test.each([
+    ['409 (an upload missing or the wrong size)', new ApiError(409, 'x')],
+    ['404', new ApiError(404, 'x')],
+    ['offline', new UnreachableError()],
+  ])('finish fails, %s: strict, none marked, so every file ends Failed, "0 of 3"', async (_name, error) => {
+    finishMock.mockRejectedValueOnce(error);
     await sendQueue();
-    allQueuedAgain();
+    allFailed();
   });
 
-  test('finish confirms fewer files than sent: only the confirmed ones leave', async () => {
+  test('finish confirms fewer files than sent: the rest end Failed, "1 of 3"', async () => {
     finishMock.mockResolvedValueOnce([idOf('q0')]);
     await sendQueue();
-    expect(queue()).toEqual([B, C]);
-    expect(session().uploadOutcome).toEqual({ kind: 'failed' });
+    expect(queue()).toEqual([
+      { ...B, status: 'failed' },
+      { ...C, status: 'failed' },
+    ]);
+    expect(session().uploadOutcome).toEqual({ kind: 'partial', sent: 1, total: 3 });
+  });
+
+  test('failed files come first, in their order; files that were not part of the send follow', async () => {
+    const late = file('late.txt', 9);
+    putMock.mockImplementationOnce(async () => {
+      session().setUploadQueue((q) => [...q, late]);
+    });
+    finishMock.mockRejectedValueOnce(new ApiError(409, 'x'));
+    await sendQueue();
+    expect(queue().map((f) => `${f.name}:${f.status}`)).toEqual([
+      'a.png:failed',
+      'b.bin:failed',
+      'c.txt:failed',
+      'late.txt:queued',
+    ]);
+  });
+});
+
+describe("Retry failed: sendQueue('failed')", () => {
+  const failed = (f: QueuedFile): QueuedFile => ({ ...f, status: 'failed' });
+
+  test('sends only the failed files, as a new send (fresh checksum and prepare)', async () => {
+    const fresh = file('new.txt', 7);
+    session().setUploadQueue([failed(A), fresh, failed(C)]);
+    await sendQueue('failed');
+    expect(checksumMock.mock.calls.map(([uri]) => uri)).toEqual([A.uri, C.uri]);
+    expect(prepareMock.mock.calls[0][1].map((f) => [f.client_ref, f.file_name])).toEqual([
+      ['q0', 'a.png'],
+      ['q1', 'c.txt'],
+    ]);
+    expect(queue()).toEqual([fresh]);
+    expect(session().uploadOutcome).toEqual({ kind: 'sent', count: 2 });
+  });
+
+  test('the failed files turn Waiting while it runs', async () => {
+    session().setUploadQueue([failed(A), failed(B)]);
+    let seen: string[] = [];
+    checksumMock.mockImplementationOnce(async (uri) => {
+      seen = queue().map((f) => f.status);
+      return hashOf(uri);
+    });
+    await sendQueue('failed');
+    expect(seen).toEqual(['waiting', 'waiting']);
+  });
+
+  test('a retry that fails again: Failed again, with its own count', async () => {
+    session().setUploadQueue([failed(A), failed(B)]);
+    putMock.mockImplementation(async (uri) => {
+      if (uri === A.uri) throw new UploadError(null);
+    });
+    await sendQueue('failed');
+    expect(queue()).toEqual([failed(A)]);
+    expect(session().uploadOutcome).toEqual({ kind: 'partial', sent: 1, total: 2 });
+  });
+
+  test('no failed files: nothing is sent', async () => {
+    await sendQueue('failed');
+    expect(prepareMock).not.toHaveBeenCalled();
+    expect(queue()).toEqual([A, B, C]);
+  });
+});
+
+describe('a reset during a send (the phone sent back to Register) is not undone', () => {
+  test('reset before a PUT ends: the send writes nothing more into the store', async () => {
+    putMock.mockImplementationOnce(async (_uri, _url, onProgress) => {
+      session().reset();
+      onProgress(0.5);
+    });
+    await sendQueue();
+    expect(session().uploadQueue).toEqual([]);
+    expect(session().uploadSending).toBeNull();
+    expect(session().uploadOutcome).toBeNull();
+    expect(putMock).toHaveBeenCalledTimes(1);
+    expect(finishMock).not.toHaveBeenCalled();
+  });
+
+  test('reset during a PUT that then fails: no later file is sent, nothing written back', async () => {
+    putMock.mockImplementationOnce(async () => {
+      session().reset();
+      throw new UploadError(null);
+    });
+    await sendQueue();
+    expect(putMock).toHaveBeenCalledTimes(1);
+    expect(session().uploadQueue).toEqual([]);
+    expect(session().uploadSending).toBeNull();
+    expect(session().uploadOutcome).toBeNull();
+  });
+
+  test("an old send's progress never reaches a file with the same id after a reset", async () => {
+    putMock.mockImplementationOnce(async (_uri, _url, onProgress) => {
+      session().reset();
+      session().setUploadQueue([A]);
+      onProgress(0.5);
+    });
+    await sendQueue();
+    expect(session().uploadQueue).toEqual([A]);
+  });
+
+  test('reset during finish: nothing written back', async () => {
+    finishMock.mockImplementationOnce(async (ids) => {
+      session().reset();
+      return ids;
+    });
+    await sendQueue();
+    expect(session().uploadQueue).toEqual([]);
+    expect(session().uploadOutcome).toBeNull();
+  });
+
+  test('reset during a prepare that then fails: nothing written back', async () => {
+    prepareMock.mockImplementationOnce(async () => {
+      session().reset();
+      throw new ApiError(401, 'x');
+    });
+    await sendQueue();
+    expect(session().uploadQueue).toEqual([]);
+    expect(session().uploadOutcome).toBeNull();
+  });
+
+  test('reset while preparing: nothing is prepared and nothing written back', async () => {
+    checksumMock.mockImplementationOnce(async (uri) => {
+      session().reset();
+      return hashOf(uri);
+    });
+    await sendQueue();
+    expect(prepareMock).not.toHaveBeenCalled();
+    expect(session().uploadQueue).toEqual([]);
+    expect(session().uploadOutcome).toBeNull();
+  });
+
+  test('a new send started after the reset is left alone by the old one', async () => {
+    let releaseOld!: () => void;
+    putMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseOld = resolve;
+        }),
+    );
+    const old = sendQueue();
+    await Promise.resolve();
+    await Promise.resolve();
+    await new Promise((r) => setTimeout(r, 0));
+    session().reset();
+    session().setPairedWith({ pcName: 'PC', deviceId: PC });
+    const D = file('d.txt', 4);
+    session().setUploadQueue([D]);
+    let newRun: unknown;
+    putMock.mockImplementationOnce(async () => {
+      newRun = session().uploadSending;
+      releaseOld();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(session().uploadSending).toEqual(newRun);
+    });
+    await sendQueue();
+    await old;
+    expect(session().uploadOutcome).toEqual({ kind: 'sent', count: 1 });
+    expect(queue()).toEqual([]);
   });
 });
 
@@ -271,14 +441,14 @@ describe('when there is nothing to do', () => {
   });
 
   test('already sending: a second call does nothing', async () => {
-    session().setUploadSending({ current: 1, total: 2 });
+    session().setUploadSending({ run: 99, current: 1, total: 2 });
     await sendQueue();
     expect(prepareMock).not.toHaveBeenCalled();
-    expect(session().uploadSending).toEqual({ current: 1, total: 2 });
+    expect(session().uploadSending).toEqual({ run: 99, current: 1, total: 2 });
   });
 
   test('a new send clears the last outcome first', async () => {
-    session().setUploadOutcome({ kind: 'failed' });
+    session().setUploadOutcome({ kind: 'partial', sent: 1, total: 2 });
     let during: unknown = 'unset';
     checksumMock.mockImplementationOnce(async (uri) => {
       during = session().uploadOutcome;
@@ -286,5 +456,17 @@ describe('when there is nothing to do', () => {
     });
     await sendQueue();
     expect(during).toBeNull();
+  });
+
+  test('each send gets its own run id', async () => {
+    const runs: number[] = [];
+    checksumMock.mockImplementation(async (uri) => {
+      runs.push(session().uploadSending?.run ?? -1);
+      return hashOf(uri);
+    });
+    await sendQueue();
+    session().setUploadQueue([file('x.txt', 1)]);
+    await sendQueue();
+    expect(new Set(runs).size).toBe(2);
   });
 });

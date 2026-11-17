@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-17: Failed uploads stay in the queue as Failed with "2 of 3 sent. Please retry.", Retry failed sends just those again, leaving the screen drops them and their popup, and a send stopped by a reset writes nothing back
 - 2026-11-17: Upload sends the queue to the paired PC: checksums, one prepare, each file uploaded in turn with its progress, then one finish and the "files sent" popup; the queue and progress outlive the screen, a stalled upload is cancelled after 30 s, and any failure puts the files back in the queue for now
 - 2026-11-17: Upload page UI: pick files into a queue, remove, clear and search them, turn away files over 100 MB when picked, a status bar with the connection, and the sending, failed and result looks from the testing menu; Upload stays off until sending is built
 - 2026-11-17: Pairing step 1: scan the PC's QR code with the camera, with a camera-access note first and an error when access is denied; the scanned text is printed for now
