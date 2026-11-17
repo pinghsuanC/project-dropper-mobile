@@ -132,6 +132,22 @@ Props added while building, beyond the tables above:
 - **Fonts**: `src/components/ui/fonts.ts` maps family names to font files; the root layout
   loads it with `useFonts`.
 
+## As built (2026-11-17, Server files)
+
+- **ListBox** (controls): `items`, `keyOf`, `renderRow`, `emptyText`. A `field` Bevel of
+  fixed height `sizes.listBoxHeight` (190) around a ScrollView (`nestedScrollEnabled`, so it
+  scrolls inside a scrolling screen). `accessibilityRole="list"`, not `accessible`, so each
+  row stays its own screen-reader stop. `emptyText` also carries "Loading…" and error lines.
+  `selectedId` / `onSelect` from the table above come when something needs selection.
+- **FileList** (patterns), server variant: `files: FileRow[]` (`{ id, name, size, createdAt,
+  incomplete? }`, its own shape: screens map server types to it), `emptyText`, `now`. Row:
+  name (`trimName`) over a caption "size · when" (muted), or "size · Incomplete" (error
+  tone). Each row is one accessible stop labelled with the full name and the detail.
+  Upload's variants (✕, Sent ✓, %, Waiting, Failed, Too large) come with Upload.
+- **TextField**: `icon?` (drawn inside the field, before the text) and `labelHidden?` (no
+  visible label; `label` is still the accessibility label), for search fields.
+- **Icon**: `search` (a magnifier: circle and handle, 24-unit outline).
+
 ## As built (2026-11-16, Home)
 
 - **Icon** (controls): `react-native-svg` (in Expo Go; installed with `expo install`).

@@ -6,7 +6,7 @@ import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 
 import { colors, sizes, tones, type TextTone } from '@/theme';
 
-export type IconName = 'monitor' | 'globe' | 'retry' | 'gear';
+export type IconName = 'monitor' | 'globe' | 'retry' | 'gear' | 'search';
 export type IconSize = 'default' | 'start';
 
 type Props = {
@@ -62,6 +62,15 @@ const SHAPES: Record<IconName, { viewBox: string; draw: React.ReactNode }> = {
       <>
         <Path d="M19 12a7 7 0 1 1-2.05-4.95" {...line} />
         <Path d="M19 4v4h-4" {...line} />
+      </>
+    ),
+  },
+  search: {
+    viewBox: '0 0 24 24',
+    draw: (
+      <>
+        <Circle cx={10} cy={10} r={6} {...line} />
+        <Path d="M14.5 14.5L20 20" {...line} />
       </>
     ),
   },

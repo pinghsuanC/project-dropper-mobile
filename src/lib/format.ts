@@ -1,0 +1,39 @@
+// File sizes, times and names in file lists (2010 FileList), as the prototype's `fmtSize`
+// and `trimName` show them. Pure functions: callers pass `now`, so tests decide the time.
+import { DATE_LOCALE, FILE_NAME_MAX } from '@/constants/config';
+import { strings } from '@/constants/strings';
+import { localDayNumber } from '@/lib/greeting';
+
+const UNITS = ['B', 'KB', 'MB', 'GB'] as const;
+
+/** "845 B", "2.1 KB", "2.3 MB": one decimal, without a trailing ".0". */
+export function formatSize(bytes: number): string {
+  let unit = 0;
+  let value = bytes;
+  while (value >= 1024 && unit < UNITS.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  const text = unit === 0 ? String(value) : value.toFixed(1).replace(/\.0$/, '');
+  return strings.format.size[UNITS[unit]](text);
+}
+
+/** "Today 4:12 PM", "Yesterday", "Nov 10", or "Nov 10, 2025" for an earlier year. */
+export function formatWhen(unixSeconds: number, now: Date): string {
+  const then = new Date(unixSeconds * 1000);
+  const daysAgo = localDayNumber(now) - localDayNumber(then);
+  if (daysAgo === 0) {
+    // ICU puts a narrow no-break space before AM/PM; show a plain one.
+    const time = then.toLocaleTimeString(DATE_LOCALE, { hour: 'numeric', minute: '2-digit' }).replace(/\s/g, ' ');
+    return strings.format.today(time);
+  }
+  if (daysAgo === 1) return strings.format.yesterday;
+  const sameYear = then.getFullYear() === now.getFullYear();
+  return then.toLocaleDateString(DATE_LOCALE, { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
+}
+
+/** Names over FILE_NAME_MAX characters are cut and end in "…". Counts characters, not UTF-16 units. */
+export function trimName(name: string): string {
+  const characters = Array.from(name);
+  return characters.length > FILE_NAME_MAX ? characters.slice(0, FILE_NAME_MAX).join('') + '…' : name;
+}

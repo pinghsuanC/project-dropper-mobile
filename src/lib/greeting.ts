@@ -17,6 +17,16 @@ export function greetingText(now: Date, userName: string | null): string {
   return strings.home.greeting[partOfDay(now.getHours())](userName || strings.home.friend);
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The date's local calendar day as a whole number (days since 1970-01-01), counted from the
+ * local year, month and day, so DST and time zones never move a day boundary off midnight.
+ */
+export function localDayNumber(date: Date): number {
+  return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS);
+}
+
 /** "Friday, Nov 13". */
 export function dateText(now: Date): string {
   return now.toLocaleDateString(DATE_LOCALE, { weekday: 'long', month: 'short', day: 'numeric' });

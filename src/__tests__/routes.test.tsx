@@ -9,6 +9,8 @@ import { getSession } from '@/state/session';
 jest.mock('@/lib/startup', () => ({ runStartup: jest.fn(() => new Promise(() => {})) }));
 // Home's connection check calls the server; its results are tested in home.test.tsx.
 jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn(async () => 'unpaired') }));
+// Server files loads GET /files/sent; tested in server-files.test.tsx.
+jest.mock('@/api/files', () => ({ getSentFiles: jest.fn(async () => []) }));
 
 const APP_DIR = './src/app';
 
@@ -72,8 +74,13 @@ describe('Pairing', () => {
 });
 
 describe('other screens', () => {
+  test('/server-files renders its window title', async () => {
+    await openAt('/server-files');
+    expect(screen).toHavePathname('/server-files');
+    expect(screen.getByText(strings.serverFiles.title)).toBeTruthy();
+  });
+
   test.each([
-    ['/server-files', strings.serverFiles.title],
     ['/upload', strings.upload.title],
     ['/share', strings.share.title],
     ['/properties', strings.properties.title],
