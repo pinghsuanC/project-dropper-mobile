@@ -21,8 +21,8 @@ Provider: any component reads it, and code outside React reads it too.
 | `pairedWith` | `null` (not paired) | `setPairedWith({ pcName, deviceId } \| null)`; `deviceId` is the upload's `receiver_id` (1090) |
 | `quote` | first entry of `assets/quotes.json` | `setQuote(text)` |
 | `uploadQueue` | `[]` | `setUploadQueue(list \| (queue) => list)`, `updateQueuedFile(id, change)` (1090) |
-| `uploadSending` | `null` (not sending) | `setUploadSending({ current, total } \| null)`; `current` 0 = preparing |
-| `uploadOutcome` | `null` | `setUploadOutcome({ kind: 'sent', count } \| { kind: 'failed' } \| null)`: how the last send ended, until its popup closes |
+| `uploadSending` | `null` (not sending) | `setUploadSending({ run, current, total } \| null)`; `current` 0 = preparing; `run` tells a send apart, so a replaced one stops |
+| `uploadOutcome` | `null` | `setUploadOutcome({ kind: 'sent', count } \| { kind: 'partial', sent, total } \| null)`: how the last send ended, until its popup closes |
 | (all) | | `reset()` back to the start values |
 
 `gifs` (1010) is added with its feature. The upload fields came with Upload Part 2 (2026-11-17).

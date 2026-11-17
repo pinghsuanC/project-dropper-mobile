@@ -11,10 +11,13 @@ import defaultQuotes from '../../assets/quotes.json';
 export type Quote = { text: string };
 /** The paired PC: its name for Home, its `device_id` as the upload's `receiver_id`. */
 export type PairedPc = { pcName: string; deviceId: string };
-/** A running upload: `current` = the file being sent (1…total), 0 while preparing. */
-export type UploadSending = { current: number; total: number };
-/** How the last upload ended, until its popup is closed. */
-export type UploadOutcome = { kind: 'sent'; count: number } | { kind: 'failed' };
+/**
+ * A running upload: `run` tells this send apart from any other (a reset or a new send replaces
+ * it); `current` = the file being sent (1…total), 0 while preparing.
+ */
+export type UploadSending = { run: number; current: number; total: number };
+/** How the last upload ended, until its popup is closed: all sent, or `sent` of `total`. */
+export type UploadOutcome = { kind: 'sent'; count: number } | { kind: 'partial'; sent: number; total: number };
 /** Names can be missing: the user name is local only and optional (1010). */
 export type Identity = { deviceId: string; userName: string | null; deviceName: string | null };
 

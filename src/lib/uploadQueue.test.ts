@@ -2,7 +2,16 @@ import { MAX_UPLOAD_BYTES } from '@/constants/config';
 
 import { strings } from '@/constants/strings';
 
-import { addPicked, filterQueue, pickProblem, removeFile, type PickedFile, type QueuedFile } from './uploadQueue';
+import {
+  addPicked,
+  dropFailed,
+  filterQueue,
+  outcomePopup,
+  pickProblem,
+  removeFile,
+  type PickedFile,
+  type QueuedFile,
+} from './uploadQueue';
 
 const MB = 1024 ** 2;
 const picked = (name: string, size: number | undefined, uri = `file:///cache/${name}`): PickedFile => ({
@@ -120,5 +129,52 @@ describe('pickProblem', () => {
     expect(pickProblem({ tooLarge: [picked('a.mov', 200 * MB)], unknownSize: [picked('b', undefined)] })?.message).toBe(
       u.tooLargeOne('a.mov', '200 MB', '100 MB'),
     );
+  });
+});
+
+describe('dropFailed (leaving /upload, 1090)', () => {
+  test('removes failed files and keeps every other status, in order', () => {
+    const files: QueuedFile[] = [
+      { ...queued('a.txt', 1), status: 'failed' },
+      { ...queued('b.txt', 2), status: 'queued' },
+      { ...queued('c.txt', 3), status: 'waiting' },
+      { ...queued('d.txt', 4), status: 'failed' },
+      { ...queued('e.txt', 5), status: 'sending', progress: 0.5 },
+    ];
+    expect(dropFailed(files).map((f) => f.name)).toEqual(['b.txt', 'c.txt', 'e.txt']);
+  });
+
+  test('no failed files: the same files', () => {
+    const files = [queued('a.txt', 1)];
+    expect(dropFailed(files)).toEqual(files);
+  });
+});
+
+describe('outcomePopup', () => {
+  const u = strings.upload;
+
+  test('all sent: info, "Upload complete", the count', () => {
+    expect(outcomePopup({ kind: 'sent', count: 3 })).toEqual({
+      kind: 'info',
+      title: u.popupTitle,
+      heading: u.complete,
+      message: '3 files sent to your PC.',
+    });
+  });
+
+  test('one sent: "1 file sent to your PC."', () => {
+    expect(outcomePopup({ kind: 'sent', count: 1 }).message).toBe('1 file sent to your PC.');
+  });
+
+  test('partial: error, "Upload", "2 of 3 sent. Please retry." (upload-partial-failed.png)', () => {
+    expect(outcomePopup({ kind: 'partial', sent: 2, total: 3 })).toEqual({
+      kind: 'error',
+      title: u.popupTitle,
+      message: '2 of 3 sent. Please retry.',
+    });
+  });
+
+  test('none sent: "0 of 3 sent. Please retry."', () => {
+    expect(outcomePopup({ kind: 'partial', sent: 0, total: 3 }).message).toBe('0 of 3 sent. Please retry.');
   });
 });

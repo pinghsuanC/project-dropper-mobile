@@ -1,9 +1,10 @@
-// The Upload queue's rules (context/details/1090), as pure functions: the screen keeps the
-// queue and calls these. Part 2 moves the queue into the session store; the rules stay here.
+// The Upload queue's rules (context/details/1090), as pure functions. The queue itself lives in
+// the session store (1030); the screen and lib/sendQueue call these.
 import { MAX_UPLOAD_BYTES } from '@/constants/config';
 import { strings } from '@/constants/strings';
 import { formatSize } from '@/lib/format';
 import { matchesName } from '@/lib/search';
+import type { UploadOutcome } from '@/state/session';
 
 /** queued: waiting for Upload · waiting: in a running upload, not started · sending · failed. */
 export type QueueStatus = 'queued' | 'waiting' | 'sending' | 'failed';
@@ -78,4 +79,16 @@ export function pickProblem({ tooLarge, unknownSize }: Pick<AddResult, 'tooLarge
   if (unknownSize.length === 1) return { kind: 'error', message: u.unknownSizeOne(unknownSize[0].name) };
   if (unknownSize.length > 1) return { kind: 'error', message: u.unknownSizeMany(unknownSize.length) };
   return null;
+}
+
+/** Leaving /upload drops failed files (the Back note); queued, waiting and sending ones stay. */
+export function dropFailed(queue: QueuedFile[]): QueuedFile[] {
+  return queue.filter((file) => file.status !== 'failed');
+}
+
+/** The popup for how the last send ended: "N files sent to your PC." or "2 of 3 sent. Please retry." */
+export function outcomePopup(outcome: UploadOutcome): UploadPopup {
+  return outcome.kind === 'sent'
+    ? { kind: 'info', title: u.popupTitle, heading: u.complete, message: u.sent(outcome.count) }
+    : { kind: 'error', title: u.popupTitle, message: u.partial(outcome.sent, outcome.total) };
 }

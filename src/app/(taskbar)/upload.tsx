@@ -2,10 +2,11 @@
 // and Clear all, files over MAX_UPLOAD_BYTES turned away when picked, a status bar with the
 // connection (Home's check), and the Back window. Laid out like Server status (1070).
 // The queue, the running send and its outcome live in the session store, and `sendQueue()`
-// runs outside React, so a send carries on when the user leaves. A testing-menu look works on
-// its own mock queue and never touches the store.
+// runs outside React, so a send carries on when the user leaves. Files a send didn't get through
+// stay Failed, with Retry failed in Upload's place, until the user leaves the screen. A
+// testing-menu look works on its own mock queue and never touches the store.
 import { getDocumentAsync } from 'expo-document-picker';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -29,9 +30,18 @@ import { formatTime } from '@/lib/format';
 import { checkConnection, type ConnectionResult } from '@/lib/homeCheck';
 import { useScreenState } from '@/lib/screenState';
 import { sendQueue } from '@/lib/sendQueue';
-import { addPicked, filterQueue, pickProblem, removeFile, type QueuedFile, type UploadPopup } from '@/lib/uploadQueue';
+import {
+  addPicked,
+  dropFailed,
+  filterQueue,
+  outcomePopup,
+  pickProblem,
+  removeFile,
+  type QueuedFile,
+  type UploadPopup,
+} from '@/lib/uploadQueue';
 import { useNow } from '@/lib/useNow';
-import { getSession, useSession, type UploadOutcome } from '@/state/session';
+import { getSession, useSession, type UploadSending } from '@/state/session';
 import { spacing } from '@/theme';
 
 const u = strings.upload;
@@ -46,13 +56,6 @@ const CONNECTION_TEXT: Record<Connection, string> = {
 };
 
 const goHome = () => router.dismissTo('/home');
-
-/** The popup for how the last send ended. */
-function outcomePopup(outcome: UploadOutcome): UploadPopup {
-  return outcome.kind === 'sent'
-    ? { kind: 'info', title: u.popupTitle, heading: u.complete, message: u.sent(outcome.count) }
-    : { kind: 'error', title: u.popupTitle, message: u.uploadFailed };
-}
 
 export default function Upload() {
   const testState = useScreenState(UploadState);
@@ -85,6 +88,20 @@ export default function Upload() {
     };
   }, [testState]);
 
+  // Leaving the screen (Confirm, ✕, the taskbar, Android Back) drops failed files; a running
+  // send's waiting and sending files stay (the Back note). A look never touches the store.
+  useFocusEffect(
+    useCallback(() => {
+      if (first) return;
+      return () => {
+        const session = getSession();
+        session.setUploadQueue(dropFailed);
+        // "Please retry" would come back over files that are gone; "all sent" is still true.
+        if (session.uploadOutcome?.kind === 'partial') session.setUploadOutcome(null);
+      };
+    }, [first]),
+  );
+
   const closePopup = useCallback(() => {
     // No pick popup open: the one showing is the send's outcome.
     if (pickPopup) setPickPopup(null);
@@ -113,7 +130,10 @@ export default function Upload() {
     }
   };
 
-  const canUpload = !first && connection === 'paired' && !sending && queue.some((file) => file.status === 'queued');
+  const connected = !first && connection === 'paired';
+  const canUpload = connected && !sending && queue.some((file) => file.status === 'queued');
+  // Files a send didn't get through: Retry failed is the only action (the prototype's partial mode).
+  const hasFailed = !sending && queue.some((file) => file.status === 'failed');
 
   const rows = filterQueue(queue, query);
   const emptyText = queue.length === 0 ? u.empty : u.noMatch(query.trim());
@@ -158,17 +178,24 @@ export default function Upload() {
               <ProgressBar />
             </View>
           ) : null}
-          <View style={styles.buttons}>
-            <Button label={u.clearAll} onPress={() => setQueue([])} disabled={queue.length === 0 || !!sending} />
-            <View style={styles.spacer} />
-            <Button
-              label={u.add}
-              icon={<Icon name="folder" size="start" tone={sending ? 'disabled' : 'normal'} />}
-              onPress={() => void add()}
-              disabled={!!sending}
-            />
-            <Button label={sending ? u.sending : u.upload} onPress={() => void sendQueue()} disabled={!canUpload} />
-          </View>
+          {hasFailed ? (
+            <View style={styles.buttons}>
+              <View style={styles.spacer} />
+              <Button label={u.retryFailed} onPress={() => void sendQueue('failed')} disabled={!connected} />
+            </View>
+          ) : (
+            <View style={styles.buttons}>
+              <Button label={u.clearAll} onPress={() => setQueue([])} disabled={queue.length === 0 || !!sending} />
+              <View style={styles.spacer} />
+              <Button
+                label={u.add}
+                icon={<Icon name="folder" size="start" tone={sending ? 'disabled' : 'normal'} />}
+                onPress={() => void add()}
+                disabled={!!sending}
+              />
+              <Button label={sending ? u.sending : u.upload} onPress={() => void sendQueue()} disabled={!canUpload} />
+            </View>
+          )}
           <StatusBar segments={status} testID="upload-status" />
         </Window>
 
@@ -197,7 +224,7 @@ export default function Upload() {
 }
 
 /** The status bar's middle segment while sending: preparing (0) or "Sending n of m". */
-function sendingText(sending: { current: number; total: number } | null): string | null {
+function sendingText(sending: Pick<UploadSending, 'current' | 'total'> | null): string | null {
   if (!sending) return null;
   return sending.current === 0 ? u.preparing : u.sendingCount(sending.current, sending.total);
 }
