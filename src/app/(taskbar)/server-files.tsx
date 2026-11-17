@@ -12,6 +12,7 @@ import { Button, FileList, Gif, Icon, TextField, Window, type FileRow } from '@/
 import { ServerFilesState } from '@/constants/screenStates';
 import { strings } from '@/constants/strings';
 import { useScreenState } from '@/lib/screenState';
+import { matchesName } from '@/lib/search';
 import { useNow } from '@/lib/useNow';
 import { spacing } from '@/theme';
 
@@ -63,8 +64,7 @@ export default function ServerFiles() {
     : loaded;
 
   const files = load.kind === 'loaded' ? load.files : [];
-  const search = query.trim().toLowerCase();
-  const rows = files.filter((file) => file.file_name.toLowerCase().includes(search)).map(toRow);
+  const rows = files.filter((file) => matchesName(file.file_name, query)).map(toRow);
 
   const emptyText =
     load.kind === 'loading'

@@ -10,8 +10,6 @@ there, not here: final GIF slots and addresses (2040), the `eas.json` profiles (
   only plans one `welcome_gif` in `/auth/me` (🚧 in its `API.md`). Agree a route with the
   server.
 - **Quote of the day:** keep the local list (`assets/quotes.json`) or add a server route.
-- **Upload size limit:** 100 MB in the prototype is a placeholder. Pick the value and where
-  the app gets it (`config.ts` or the server).
 - **Sharing "loading" timeout:** 10–15 s suggested. Normal requests use 10 s
   (`REQUEST_TIMEOUT_MS`).
 

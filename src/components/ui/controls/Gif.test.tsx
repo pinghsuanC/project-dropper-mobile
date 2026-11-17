@@ -14,11 +14,16 @@ test('a slot with a local file shows that GIF', async () => {
   const image = screen.getByTestId('g-image', HIDDEN);
   expect(localGif('notWelcome')).toBeDefined();
   expect(JSON.stringify(image.props.source)).toContain('notWelcome.gif');
-  });
+});
+
+test('the banner slot shows banner.gif (Register, Server status, Upload, Shared file)', async () => {
+  await render(<Gif slot="banner" size="large" testID="g" />);
+  expect(JSON.stringify(screen.getByTestId('g-image', HIDDEN).props.source)).toContain('banner.gif');
+});
 
 test('a slot without a file keeps its space empty: no image, no placeholder box', async () => {
-  await render(<Gif slot="banner" size="large" testID="g" />);
-  expect(localGif('banner')).toBeUndefined();
+  await render(<Gif slot="homeRight" size="large" testID="g" />);
+  expect(localGif('homeRight')).toBeUndefined();
   expect(screen.queryByTestId('g-image', HIDDEN)).toBeNull();
   const outer = screen.getByTestId('g', HIDDEN);
   expect(outer.children).toHaveLength(0);

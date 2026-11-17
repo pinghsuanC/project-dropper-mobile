@@ -144,7 +144,47 @@ export const strings = {
     } satisfies Record<FileStatus, string>,
   },
   upload: {
-    title: 'Upload',
+    title: 'Pending upload',
+    search: 'Search files',
+    empty: 'Your upload queue is empty',
+    noMatch: (query: string) => `No files match "${query}"`,
+    clearAll: 'Clear all',
+    add: 'Add…',
+    upload: 'Upload',
+    sending: 'Sending…',
+    /** A queued row's ✕, for screen readers. */
+    remove: (name: string) => `Remove ${name}`,
+    waiting: 'Waiting',
+    failed: 'Failed',
+    percent: (n: number) => `${n}%`,
+    /** What a screen reader says for a queued row: name, size, then its status when it has one. */
+    rowLabel: (name: string, size: string, status?: string) => [name, size, status].filter(Boolean).join(', '),
+    /** Status bar segments. */
+    checking: 'Checking…',
+    connected: 'Connected',
+    notConnected: 'Not connected',
+    serverError: "Can't reach server",
+    fileCount: (n: number) => (n === 1 ? '1 file' : `${n} files`),
+    sendingCount: (current: number, total: number) => `Sending ${current} of ${total}`,
+    /** Picking files. */
+    tooLargeOne: (name: string, size: string, max: string) => `${name} is too large (${size}). Files can be up to ${max}.`,
+    tooLargeMany: (count: number, max: string) => `${count} files are too large. Files can be up to ${max}.`,
+    unknownSizeOne: (name: string) => `Couldn't read the size of ${name}.`,
+    unknownSizeMany: (count: number) => `Couldn't read the size of ${count} files.`,
+    pickError: "Couldn't open your files. Please try again.",
+    /** Result popups. */
+    popupTitle: 'Upload',
+    complete: 'Upload complete',
+    sent: (n: number) => (n === 1 ? '1 file sent to your PC.' : `${n} files sent to your PC.`),
+    partial: (sent: number, total: number) => `${sent} of ${total} sent. Please retry.`,
+    ok: 'OK',
+    /** The Back window. */
+    backTitle: 'Back',
+    backPrompt: 'Back to home screen?',
+    backNote:
+      'Only In-progress items will be preserved. Failed items will be automatically removed once leaving this screen. Please check the files uploaded on the server page.',
+    confirm: 'Confirm',
+    cancel: 'Cancel',
   },
   share: {
     title: 'Send to your PC',
