@@ -1,8 +1,9 @@
 // Upload, "Pending upload" (context/details/1090): a queue of picked files, with search, ✕
 // and Clear all, files over MAX_UPLOAD_BYTES turned away when picked, a status bar with the
 // connection (Home's check), and the Back window. Laid out like Server status (1070).
-// Part 1 of the upload feature: Upload stays disabled until sending is built (Part 2); the
-// sending, failed and result looks open from the testing menu with a mock queue.
+// The queue, the running send and its outcome live in the session store, and `sendQueue()`
+// runs outside React, so a send carries on when the user leaves. A testing-menu look works on
+// its own mock queue and never touches the store.
 import { getDocumentAsync } from 'expo-document-picker';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -27,8 +28,10 @@ import { strings } from '@/constants/strings';
 import { formatTime } from '@/lib/format';
 import { checkConnection, type ConnectionResult } from '@/lib/homeCheck';
 import { useScreenState } from '@/lib/screenState';
+import { sendQueue } from '@/lib/sendQueue';
 import { addPicked, filterQueue, pickProblem, removeFile, type QueuedFile, type UploadPopup } from '@/lib/uploadQueue';
 import { useNow } from '@/lib/useNow';
+import { getSession, useSession, type UploadOutcome } from '@/state/session';
 import { spacing } from '@/theme';
 
 const u = strings.upload;
@@ -44,15 +47,29 @@ const CONNECTION_TEXT: Record<Connection, string> = {
 
 const goHome = () => router.dismissTo('/home');
 
+/** The popup for how the last send ended. */
+function outcomePopup(outcome: UploadOutcome): UploadPopup {
+  return outcome.kind === 'sent'
+    ? { kind: 'info', title: u.popupTitle, heading: u.complete, message: u.sent(outcome.count) }
+    : { kind: 'error', title: u.popupTitle, message: u.uploadFailed };
+}
+
 export default function Upload() {
   const testState = useScreenState(UploadState);
   // A testing-menu state sets the first look (mock queue, sending, popup); it works from there.
   const [first] = useState(() => (testState ? mockUploadLook(testState) : null));
-  const [queue, setQueue] = useState<QueuedFile[]>(first?.queue ?? []);
-  const [popup, setPopup] = useState<UploadPopup | null>(first?.popup ?? null);
+  const [mockQueue, setMockQueue] = useState<QueuedFile[]>(first?.queue ?? []);
+  const storeQueue = useSession((s) => s.uploadQueue);
+  const storeSending = useSession((s) => s.uploadSending);
+  const outcome = useSession((s) => s.uploadOutcome);
+  const queue = first ? mockQueue : storeQueue;
+  const setQueue = first ? setMockQueue : getSession().setUploadQueue;
+  const sending = first ? first.sending : storeSending;
+  // A pick problem or a look's popup first; otherwise how the last send ended.
+  const [pickPopup, setPickPopup] = useState<UploadPopup | null>(first?.popup ?? null);
+  const popup = pickPopup ?? (outcome && !first ? outcomePopup(outcome) : null);
   const [connection, setConnection] = useState<Connection>(first ? 'paired' : 'checking');
   const [query, setQuery] = useState('');
-  const sending = first?.sending ?? null;
   const now = useNow();
 
   // Check the server and the paired PC once when the screen opens, as Home does; a testing-menu
@@ -68,7 +85,11 @@ export default function Upload() {
     };
   }, [testState]);
 
-  const closePopup = useCallback(() => setPopup(null), []);
+  const closePopup = useCallback(() => {
+    // No pick popup open: the one showing is the send's outcome.
+    if (pickPopup) setPickPopup(null);
+    else getSession().setUploadOutcome(null);
+  }, [pickPopup]);
 
   // Android Back closes a popup first (Dialog notes, 2010).
   useEffect(() => {
@@ -86,17 +107,19 @@ export default function Upload() {
       if (result.canceled) return;
       const added = addPicked(queue, result.assets);
       setQueue(added.queue);
-      setPopup(pickProblem(added));
+      setPickPopup(pickProblem(added));
     } catch {
-      setPopup({ kind: 'error', message: u.pickError });
+      setPickPopup({ kind: 'error', message: u.pickError });
     }
   };
+
+  const canUpload = !first && connection === 'paired' && !sending && queue.some((file) => file.status === 'queued');
 
   const rows = filterQueue(queue, query);
   const emptyText = queue.length === 0 ? u.empty : u.noMatch(query.trim());
   const status: StatusSegment[] = [
     { text: CONNECTION_TEXT[connection], dot: connection === 'paired' },
-    { text: sending ? u.sendingCount(sending.current, sending.total) : u.fileCount(queue.length) },
+    { text: sendingText(sending) ?? u.fileCount(queue.length) },
     { text: formatTime(now) },
   ];
 
@@ -144,8 +167,7 @@ export default function Upload() {
               onPress={() => void add()}
               disabled={!!sending}
             />
-            {/* Sending comes in Part 2; until then Upload is always disabled. */}
-            <Button label={sending ? u.sending : u.upload} onPress={() => {}} disabled />
+            <Button label={sending ? u.sending : u.upload} onPress={() => void sendQueue()} disabled={!canUpload} />
           </View>
           <StatusBar segments={status} testID="upload-status" />
         </Window>
@@ -172,6 +194,12 @@ export default function Upload() {
       ) : null}
     </View>
   );
+}
+
+/** The status bar's middle segment while sending: preparing (0) or "Sending n of m". */
+function sendingText(sending: { current: number; total: number } | null): string | null {
+  if (!sending) return null;
+  return sending.current === 0 ? u.preparing : u.sendingCount(sending.current, sending.total);
 }
 
 const styles = StyleSheet.create({

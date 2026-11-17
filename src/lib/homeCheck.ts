@@ -11,7 +11,7 @@ export async function checkConnection(): Promise<ConnectionResult> {
   try {
     await getMe();
     const pc = await getPairedDevice();
-    getSession().setPairedWith(pc ? { pcName: pc.name } : null);
+    getSession().setPairedWith(pc ? { pcName: pc.name, deviceId: pc.device_id } : null);
     return pc ? 'paired' : 'unpaired';
   } catch {
     // Unreachable, 5xx, or a 401 / 403 on /auth/me: all show "Can't reach" with Retry for now.

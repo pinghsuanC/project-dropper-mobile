@@ -46,3 +46,22 @@ export type SentFile = {
 };
 /** Newest first; empty when nothing is waiting. */
 export type SentFilesData = SentFile[];
+
+/**
+ * One file of `POST /files/prepare-batch-upload`. `client_ref` is the phone's own label
+ * (unique in the request) that the server echoes back; `checksum` is lowercase hex SHA-256.
+ */
+export type BatchUploadFile = {
+  client_ref: string;
+  file_name: string;
+  size: number;
+  content_type: string;
+  checksum: string;
+};
+export type PrepareBatchUploadRequest = { receiver_id: string; files: BatchUploadFile[] };
+/** `upload_url` is a presigned PUT: never logged or shown, and sent without the token. */
+export type PreparedUpload = { client_ref: string; file_id: string; upload_url: string };
+export type PrepareBatchUploadData = { files: PreparedUpload[] };
+
+export type FinishBatchUploadRequest = { file_ids: string[] };
+export type FinishBatchUploadData = { file_ids: string[] };

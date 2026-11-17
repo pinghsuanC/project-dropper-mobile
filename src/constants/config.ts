@@ -29,7 +29,18 @@ export const API_PATHS = {
   me: '/auth/me',
   pairedDevice: '/devices/paired',
   sentFiles: '/files/sent',
+  prepareBatchUpload: '/files/prepare-batch-upload',
+  finishBatchUpload: '/files/finish-batch-upload',
 } as const;
+
+/**
+ * An upload to R2 that reports no progress for this long is cancelled (and counts as failed).
+ * Reset on every progress report, so a slow but moving upload of a large file is never cut.
+ */
+export const UPLOAD_STALL_TIMEOUT_MS = 30_000;
+
+/** `content_type` sent for a file the picker gave no MIME type for. */
+export const DEFAULT_CONTENT_TYPE = 'application/octet-stream';
 
 /** The `platform` this app registers as. */
 export const DEVICE_PLATFORM = 'android';
