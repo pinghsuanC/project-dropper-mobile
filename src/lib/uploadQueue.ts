@@ -10,7 +10,10 @@ import type { UploadOutcome } from '@/state/session';
 export type QueueStatus = 'queued' | 'waiting' | 'sending' | 'failed';
 
 export type QueuedFile = {
-  /** The picker's cache copy is unique per pick, so its uri is the id. */
+  /**
+   * The picker's content:// link is the id. Picking the same document again gives the same link,
+   * but it is skipped as the same name and size, so ids stay unique in the queue.
+   */
   id: string;
   uri: string;
   name: string;

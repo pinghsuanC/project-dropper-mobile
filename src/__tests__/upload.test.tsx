@@ -96,6 +96,16 @@ describe('empty start', () => {
 });
 
 describe('Add…', () => {
+  // Expo Go scopes expo-file-system to each project's own folders, and the picker's cache copy
+  // lands outside them ("Missing 'READ' permission"); the picker's own content:// link is
+  // readable, so no copy is asked for (1090).
+  test('asks the picker for its own links, not cache copies', async () => {
+    await open();
+    willPick({ name: 'a.txt', size: 3 });
+    await press(u.add);
+    expect(pickMock).toHaveBeenCalledWith({ multiple: true, copyToCacheDirectory: false });
+  });
+
   test('opens the picker for several files, and the picked files join the queue', async () => {
     await open();
     willPick({ name: 'holiday-photo.jpg', size: 2.3 * MB }, { name: 'notes.txt', size: 2048 });
