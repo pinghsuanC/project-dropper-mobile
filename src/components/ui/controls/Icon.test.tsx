@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react-native';
+import { processColor } from 'react-native';
 
-import { sizes, tones } from '@/theme';
+import { colors, sizes, tones } from '@/theme';
 
 import { Icon, type IconName } from './Icon';
 
@@ -45,4 +46,31 @@ test.each([
   for (const part of parts) expect(json).toContain(`"type":"${part}"`);
   expect(screen.getByTestId('i', HIDDEN).props.vbWidth).toBe(box);
   if (name !== 'globe') expect(json).not.toContain('RNSVGEllipse');
+});
+
+test('camera is a line icon in the tone colour', async () => {
+  await render(<Icon name="camera" tone="disabled" testID="i" />);
+  const svg = screen.getByTestId('i', HIDDEN);
+  expect(svg.props.vbWidth).toBe(24);
+  expect(svg.props.color).toBe(tones.disabled);
+});
+
+// Warning and info keep their own colours (2030), whatever the tone.
+test.each([
+  ['warning', colors.iconWarning],
+  ['info', colors.iconInfo],
+] as const)('%s is filled with its own colour', async (name, fill) => {
+  await render(<Icon name={name} tone="disabled" testID="i" />);
+  // react-native-svg hands the native view a processed colour: compare against the same.
+  expect(screen.getByTestId('i-fill', HIDDEN).props.fill).toEqual(svgColor(fill));
+});
+
+/** A colour as react-native-svg passes it to its native views. */
+function svgColor(color: string) {
+  return { type: 0, payload: processColor(color) };
+}
+
+test('the dialog size matches the Dialog error icon', async () => {
+  await render(<Icon name="info" size="dialog" testID="i" />);
+  expect(screen.getByTestId('i', HIDDEN).props.width).toBe(sizes.dialogIcon.size);
 });

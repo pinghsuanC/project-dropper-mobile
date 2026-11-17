@@ -24,6 +24,9 @@ export const colors = {
   disabled: '#808080',
   disabledShadow: '#ffffff',
   terminalText: '#c0c0c0',
+  // Icons with their own colours (2030 Icons): they keep them whatever the text tone.
+  iconWarning: '#ffff00',
+  iconInfo: '#000080',
 } as const;
 
 /** Testing menu only (src/components/dev/). */
@@ -134,7 +137,7 @@ export const sizes = {
   dialogButtonWidth: 88,
   dialogIcon: { size: 32, border: 1, stroke: 3, crossLength: 16 },
   /** Icon (2010): drawn size; `start` is the taskbar button's. Stroke in viewBox units. */
-  icon: { default: 26, start: 16, stroke: 1.4 },
+  icon: { default: 26, start: 16, dialog: 32, stroke: 1.4 },
   /**
    * Balloon (2010): 2px outline, corners stepped in by `step` three times, a tail at `tailLeft`
    * from the left. `tail` is the black triangle's side, `tailInset` how much smaller the yellow
@@ -147,6 +150,13 @@ export const sizes = {
   listBoxHeight: 190,
   /** Taskbar (2010): the strip's height. */
   taskbarHeight: 44,
+  /**
+   * ProgressBar (2010): `blocks` slots across the bar, `run` filled ones moving while it's
+   * indeterminate, and the bar's height per size.
+   */
+  progressBar: { blocks: 20, run: 5, gap: 2, height: { default: 22, mini: 12 } },
+  /** Pairing camera (1080): the corner brackets' arm length, stroke and inset from the edge. */
+  qrBracket: { length: 28, stroke: 4, inset: '18%' },
   /** Testing menu (src/components/dev/): menu button height, so a row's two buttons match. */
   devMenuButtonHeight: 64,
 } as const;
@@ -162,6 +172,8 @@ export const layers = {
 /** Blink period of the terminal cursor. */
 export const motion = {
   cursorBlinkMs: 500,
+  /** An indeterminate ProgressBar moves one block this often. */
+  progressStepMs: 150,
 } as const;
 
 /**

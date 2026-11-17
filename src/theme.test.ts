@@ -21,6 +21,8 @@ describe('colors (2030)', () => {
       disabled: '#808080',
       disabledShadow: '#ffffff',
       terminalText: '#c0c0c0',
+      iconWarning: '#ffff00',
+      iconInfo: '#000080',
     });
   });
 

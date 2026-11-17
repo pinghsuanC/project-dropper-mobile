@@ -59,8 +59,9 @@ with a disabled button). No emoji icons: they look different on every phone.
   disabled tone's shadow. `devColors` is separate.
 - `app.json` `userInterfaceStyle: "light"` is set.
 - `success` darkened to `#005000` (2026-11-16, Register's "Registered!" on grey).
-- Still open: the icon colours (with `Icon`). Until then the Dialog's drawn error icon uses
-  `error` with a white ✕ (2010).
+- `iconWarning` (`#ffff00`) and `iconInfo` (`#000080`) are in `colors` (2026-11-17, Pairing):
+  the `warning` and `info` Icons. Still open: `iconError` and `iconSearch`; until then the
+  Dialog's drawn error icon uses `error` with a white ✕ (2010).
 
 ## Testing menu only
 
