@@ -62,11 +62,14 @@ describe('Home', () => {
 });
 
 describe('Pairing', () => {
-  test('step 1 → step 2 → Home', async () => {
+  // Step 1 is built: its looks are in pairing-scan.test.tsx. Step 2 is still a placeholder.
+  test('step 1 renders its window', async () => {
     await openAt('/pairing/scan');
-    expect(screen.getByRole('header', { name: strings.pairing.scanTitle })).toBeTruthy();
-    await pressLink(strings.pairing.toWait);
-    expect(screen).toHavePathname('/pairing/wait');
+    expect(screen.getByText(strings.pairing.stepOneTitle)).toBeTruthy();
+  });
+
+  test('step 2 → Home', async () => {
+    await openAt('/pairing/wait');
     expect(screen.getByRole('header', { name: strings.pairing.waitTitle })).toBeTruthy();
     await pressLink(strings.pairing.toHome);
     expect(screen).toHavePathname('/home');

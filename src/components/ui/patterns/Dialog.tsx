@@ -1,4 +1,4 @@
-// Modal popup (2010). Only `kind="error"` so far. Drawn as a full-screen overlay, not an RN
+// Modal popup (2010). `kind`: `error` (drawn red icon) or `info` (the info Icon). Drawn as a full-screen overlay, not an RN
 // `Modal`: a Modal is its own native window and would cover the DEV button, which must stay
 // above popups. ✕ does what the secondary button does, or the primary when it's alone.
 // `code` / `details` show in a sunken mono box, each row only when given.
@@ -14,11 +14,12 @@ import { strings } from '@/constants/strings';
 import { colors, layers, sizes, spacing } from '@/theme';
 
 import { Button } from '../controls/Button';
+import { Icon } from '../controls/Icon';
 import { Window } from '../controls/Window';
 import { Bevel } from '../primitives/Bevel';
 import { Text } from '../primitives/Text';
 
-export type DialogKind = 'error';
+export type DialogKind = 'error' | 'info';
 
 type DialogButton = { label: string; onPress: () => void };
 
@@ -26,6 +27,8 @@ type Props = {
   kind: DialogKind;
   /** Title-bar text and bold heading. Default: "Error". */
   heading?: string;
+  /** Title-bar text when it differs from the heading (e.g. "Camera" over "Camera access"). */
+  title?: string;
   message: string;
   /** E.g. an ApiError's status. */
   code?: string | number;
@@ -36,7 +39,7 @@ type Props = {
   testID?: string;
 };
 
-export function Dialog({ kind, heading = strings.ui.dialog.error, message, code, details, primary, secondary, testID }: Props) {
+export function Dialog({ kind, heading = strings.ui.dialog.error, title, message, code, details, primary, secondary, testID }: Props) {
   const primaryRef = useRef<ComponentRef<typeof View>>(null);
   const id = (part: string) => (testID ? `${testID}-${part}` : undefined);
   const hasCode = code !== undefined && code !== '';
@@ -50,8 +53,8 @@ export function Dialog({ kind, heading = strings.ui.dialog.error, message, code,
   return (
     <View style={styles.overlay} testID={id('overlay')}>
       <View accessibilityRole="alert" accessibilityViewIsModal style={styles.window} testID={testID}>
-        <Window title={heading} onClose={(secondary ?? primary).onPress} bodyStyle={styles.body} testID={id('window')}>
-          {kind === 'error' ? <ErrorIcon testID={id('icon')} /> : null}
+        <Window title={title ?? heading} onClose={(secondary ?? primary).onPress} bodyStyle={styles.body} testID={id('window')}>
+          {kind === 'error' ? <ErrorIcon testID={id('icon')} /> : <Icon name="info" size="dialog" testID={id('icon-info')} />}
           <Text bold align="center">
             {heading}
           </Text>

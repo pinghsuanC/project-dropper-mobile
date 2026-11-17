@@ -128,3 +128,17 @@ test('covers the whole screen above it, on the dialog layer (below the DEV butto
   expect(overlay.zIndex).toBe(layers.dialog);
   expect(overlay.elevation).toBe(layers.dialog);
 });
+
+describe('info', () => {
+  test('shows the info icon, not the error icon', async () => {
+    await render(<Dialog kind="info" heading="Camera access" message="m" primary={ok()} testID="d" />);
+    expect(screen.getByTestId('d-icon-info', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.queryByTestId('d-icon', { includeHiddenElements: true })).toBeNull();
+  });
+
+  test('a title replaces the heading in the title bar only', async () => {
+    await render(<Dialog kind="info" title="Camera" heading="Camera access" message="m" primary={ok()} />);
+    expect(screen.getByText('Camera')).toBeTruthy();
+    expect(screen.getAllByText('Camera access')).toHaveLength(1);
+  });
+});

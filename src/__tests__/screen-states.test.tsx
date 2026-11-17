@@ -31,10 +31,10 @@ beforeEach(() => {
   jest.mocked(runStartup).mockClear();
 });
 
-// Register, Home and Server files are built: their states change the screen itself
-// (register.test.tsx, home.test.tsx, server-files.test.tsx) instead of showing a state line.
+// Register, Home, Server files and Pairing step 1 are built: their states change the screen itself
+// (register.test.tsx, home.test.tsx, server-files.test.tsx,
+// pairing-scan.test.tsx) instead of showing a state line.
 test.each([
-  ['/pairing/scan', 'cameraNote'],
   ['/pairing/wait', 'error'],
   ['/upload', 'tooLarge'],
   ['/share', 'ready'],

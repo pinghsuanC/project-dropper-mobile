@@ -132,6 +132,22 @@ Props added while building, beyond the tables above:
 - **Fonts**: `src/components/ui/fonts.ts` maps family names to font files; the root layout
   loads it with `useFonts`.
 
+## As built (2026-11-17, Pairing step 1)
+
+- **ProgressBar** (controls): `value?` (0–1, clamped; announced as `{ min: 0, max: 100, now }`),
+  `size`: `default` · `mini`. A `field` Bevel with `sizes.progressBar.blocks` (20) slots;
+  filled ones are `titleBar` navy. No `value`: indeterminate, a run of `run` (5) blocks moves
+  one slot every `motion.progressStepMs` and wraps. `accessibilityRole="progressbar"`.
+- **Notice** (patterns): `text`. The `warning` Icon and bold body text in a row. Only
+  warnings so far.
+- **Icon**: `camera` (line icon, tone colour), `warning` (yellow triangle, black outline and
+  !) and `info` (navy disc, white i), which keep their 2030 colours (`iconWarning`,
+  `iconInfo`) whatever the tone. Size `dialog` (`sizes.icon.dialog`, 32, as the Dialog's error
+  icon).
+- **Dialog**: `kind="info"` (the `info` Icon), and `title?` for title-bar text that differs
+  from the heading (Pairing: "Camera" over "Camera access").
+- **QrCamera** is not a `ui/` component: it lives in `components/pairing/` (1080).
+
 ## As built (2026-11-17, Server files)
 
 - **ListBox** (controls): `items`, `keyOf`, `renderRow`, `emptyText`. A `field` Bevel of

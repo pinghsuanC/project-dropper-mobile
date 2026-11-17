@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-17: Pairing step 1: scan the PC's QR code with the camera, with a camera-access note first and an error when access is denied; the scanned text is printed for now
 - 2026-11-17: Server status rows show each file's type, an "Uploaded" date and its status, with nothing in red
 - 2026-11-17: Server files: the files this phone sent that the PC hasn't downloaded yet, from the server, with search, Retry, empty and Incomplete rows, and Back to Home
 - 2026-11-17: Home screen: greeting and quote of the day, a connection check against the server and the paired PC with its four looks and Retry, the Upload question and the taskbar
