@@ -48,7 +48,7 @@ test('lists the prototype sections in order', () => {
 });
 
 test('each section has the prototype number of entries (Landing: one, it runs for real)', () => {
-  expect(DEV_ROUTES.map((s) => s.entries.length)).toEqual([1, 3, 3, 6, 2, 5, 3, 2]);
+  expect(DEV_ROUTES.map((s) => s.entries.length)).toEqual([1, 3, 4, 6, 2, 5, 3, 2]);
 });
 
 test('every entry has a label, and no two entries share one', () => {

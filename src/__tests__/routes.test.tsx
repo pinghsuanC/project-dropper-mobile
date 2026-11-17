@@ -7,6 +7,8 @@ import { getSession } from '@/state/session';
 
 // Landing runs start-up on mount; keep it pending so these route tests never call the server.
 jest.mock('@/lib/startup', () => ({ runStartup: jest.fn(() => new Promise(() => {})) }));
+// Home's connection check calls the server; its results are tested in home.test.tsx.
+jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn(async () => 'unpaired') }));
 
 const APP_DIR = './src/app';
 
@@ -48,7 +50,7 @@ describe('Register', () => {
 });
 
 describe('Home', () => {
-  test('opens the not-connected Home when no PC is paired', async () => {
+  test('opens Home, not connected when the check finds no PC', async () => {
     await openAt('/home');
     expect(screen).toHavePathname('/home');
     expect(screen.getByText(strings.home.titleUnpaired)).toBeTruthy();

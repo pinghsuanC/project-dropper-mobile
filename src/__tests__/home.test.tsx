@@ -1,10 +1,12 @@
-// The Home screen (context/details/1060): its three looks, the balloon, and where each button
-// goes. Part 1 (UI and redirection): the look comes from the session's pairedWith, or from a
-// testing-menu state.
+// The Home screen (context/details/1060): its looks, the balloon, and where each button goes.
+// The look comes from the connection check (Part 2), or from a testing-menu state.
 import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
+import { CLOCK_TICK_MS } from '@/constants/config';
 import { strings } from '@/constants/strings';
+import type { ConnectionResult } from '@/lib/homeCheck';
+import { quoteForDate } from '@/lib/quotes';
 import { getSession } from '@/state/session';
 import { colors, sizes, tones } from '@/theme';
 
@@ -14,6 +16,17 @@ jest.mock('@/lib/startup', () => ({ runStartup: jest.fn(() => new Promise(() => 
 jest.mock('@/constants/config', () =>
   Object.defineProperty({ ...jest.requireActual('@/constants/config') }, 'SHOW_TESTING_MENU', { get: () => true }),
 );
+
+// The check is unit tested in lib/homeCheck.test.ts; here each test decides its result.
+const mockCheck = jest.fn<Promise<ConnectionResult>, []>();
+jest.mock('@/lib/homeCheck', () => ({ checkConnection: () => mockCheck() }));
+
+/** Make the next checks wait until resolve(result) is called. */
+function holdCheck() {
+  let resolve: (result: ConnectionResult) => void = () => {};
+  mockCheck.mockImplementation(() => new Promise((r) => (resolve = r)));
+  return { resolve: async (result: ConnectionResult) => act(async () => resolve(result)) };
+}
 
 const h = strings.home;
 const HIDDEN = { includeHiddenElements: true };
@@ -29,6 +42,7 @@ const colorOf = (text: string) => StyleSheet.flatten(screen.getByText(text).prop
 beforeEach(() => {
   jest.useFakeTimers({ now: FRIDAY_2PM });
   getSession().reset();
+  mockCheck.mockReset().mockResolvedValue('unpaired');
 });
 
 afterEach(() => {
@@ -47,11 +61,12 @@ describe('balloon, GIFs and date (every look)', () => {
     expect(screen.getByText(h.greeting.afternoon(h.friend))).toBeTruthy();
   });
 
-  test('shows the quote of the day from the session', async () => {
-    getSession().setQuote('First, solve the problem. Then, write the code.');
+  test("shows today's quote and puts it in the session", async () => {
     await openHome();
+    const quote = quoteForDate(FRIDAY_2PM).text;
     expect(screen.getByText(h.quoteLabel)).toBeTruthy();
-    expect(screen.getByText('First, solve the problem. Then, write the code.')).toBeTruthy();
+    expect(screen.getByText(quote)).toBeTruthy();
+    expect(getSession().quote.text).toBe(quote);
   });
 
   test('shows the date line', async () => {
@@ -64,6 +79,24 @@ describe('balloon, GIFs and date (every look)', () => {
     for (const id of ['home-gif-left', 'home-gif-right', 'home-gif-main']) {
       expect(screen.getByTestId(id, HIDDEN)).toBeTruthy();
     }
+  });
+});
+
+describe('while Home stays open', () => {
+  test('the greeting moves from afternoon to evening', async () => {
+    jest.setSystemTime(new Date(2026, 10, 13, 17, 59, 30));
+    await openHome();
+    expect(screen.getByText(h.greeting.afternoon(h.friend))).toBeTruthy();
+    await act(async () => jest.advanceTimersByTime(CLOCK_TICK_MS));
+    expect(screen.getByText(h.greeting.evening(h.friend))).toBeTruthy();
+  });
+
+  test('after midnight: the next date and the next quote', async () => {
+    jest.setSystemTime(new Date(2026, 10, 13, 23, 59, 30));
+    await openHome();
+    await act(async () => jest.advanceTimersByTime(CLOCK_TICK_MS));
+    expect(screen.getByText('Saturday, Nov 14')).toBeTruthy();
+    expect(screen.getByText(quoteForDate(new Date(2026, 10, 14)).text)).toBeTruthy();
   });
 });
 
@@ -89,7 +122,25 @@ describe('layout', () => {
   });
 });
 
-describe('not connected (pairedWith null)', () => {
+describe('checking', () => {
+  test('runs the check once when Home opens', async () => {
+    await openHome();
+    expect(mockCheck).toHaveBeenCalledTimes(1);
+  });
+
+  test('meanwhile: connected title, disabled "Checking…" button with the globe, muted status, Upload window', async () => {
+    holdCheck();
+    await openHome();
+    expect(screen.getByText(h.titlePaired)).toBeTruthy();
+    expect(screen.getByRole('button', { name: h.checking }).props.accessibilityState).toMatchObject({ disabled: true });
+    expect(screen.getByTestId('home-icon-globe', HIDDEN)).toBeTruthy();
+    const status = within(screen.getByTestId('home-status')).getByText(h.checking);
+    expect(StyleSheet.flatten(status.props.style).color).toBe(tones.muted);
+    expect(screen.getByText(h.uploadPrompt)).toBeTruthy();
+  });
+});
+
+describe('not connected (check: unpaired)', () => {
   beforeEach(() => openHome());
 
   test('title, the connect button with the monitor icon, and no Upload window', async () => {
@@ -111,9 +162,9 @@ describe('not connected (pairedWith null)', () => {
   });
 });
 
-describe('connected (pairedWith set)', () => {
+describe('connected (check: paired)', () => {
   beforeEach(async () => {
-    getSession().setPairedWith({ pcName: 'DESKTOP-01' });
+    mockCheck.mockResolvedValue('paired');
     await openHome();
   });
 
@@ -147,21 +198,13 @@ describe('connected (pairedWith set)', () => {
   });
 });
 
-describe('testing-menu states', () => {
-  test('?state=paired shows the connected look without a paired session', async () => {
-    await openHome('?state=paired');
-    expect(screen.getByText(h.titlePaired)).toBeTruthy();
-    expect(getSession().pairedWith).toBeNull();
+describe("can't reach (check: serverError)", () => {
+  beforeEach(async () => {
+    mockCheck.mockResolvedValue('serverError');
+    await openHome();
   });
 
-  test('?state=unpaired shows the not-connected look even when paired', async () => {
-    getSession().setPairedWith({ pcName: 'DESKTOP-01' });
-    await openHome('?state=unpaired');
-    expect(screen.getByText(h.titleUnpaired)).toBeTruthy();
-  });
-
-  test("?state=serverError: can't-reach title, Retry with its icon, red status, Upload window", async () => {
-    await openHome('?state=serverError');
+  test("can't-reach title, Retry with its icon, red status, Upload window", async () => {
     expect(screen.getByText(h.titleServerError)).toBeTruthy();
     expect(screen.getByRole('button', { name: h.retry })).toBeTruthy();
     expect(screen.getByTestId('home-icon-retry', HIDDEN)).toBeTruthy();
@@ -169,11 +212,42 @@ describe('testing-menu states', () => {
     expect(screen.getByText(h.uploadPrompt)).toBeTruthy();
   });
 
-  test('Retry goes back to the plain Home (Part 1), which follows the session', async () => {
-    await openHome('?state=serverError');
+  test('Retry checks again, shows "Checking…" meanwhile, and stays on Home', async () => {
+    const check = holdCheck();
     await press(h.retry);
-    await act(async () => {});
+    expect(mockCheck).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('button', { name: h.checking })).toBeTruthy();
     expect(screen).toHavePathname('/home');
+    await check.resolve('paired');
+    expect(screen.getByText(h.serverConnected)).toBeTruthy();
+  });
+});
+
+describe('testing-menu states', () => {
+  test('?state=paired shows the connected look', async () => {
+    await openHome('?state=paired');
+    expect(screen.getByText(h.serverConnected)).toBeTruthy();
+  });
+
+  test('?state=unpaired shows the not-connected look even when the check would say paired', async () => {
+    mockCheck.mockResolvedValue('paired');
+    await openHome('?state=unpaired');
     expect(screen.getByText(h.titleUnpaired)).toBeTruthy();
+  });
+
+  test("?state=serverError: can't-reach title and Retry", async () => {
+    await openHome('?state=serverError');
+    expect(screen.getByText(h.titleServerError)).toBeTruthy();
+    expect(screen.getByRole('button', { name: h.retry })).toBeTruthy();
+  });
+
+  test('?state=checking shows the checking look', async () => {
+    await openHome('?state=checking');
+    expect(screen.getByRole('button', { name: h.checking })).toBeTruthy();
+  });
+
+  test.each(['paired', 'unpaired', 'checking', 'serverError'])('?state=%s skips the real check', async (state) => {
+    await openHome(`?state=${state}`);
+    expect(mockCheck).not.toHaveBeenCalled();
   });
 });

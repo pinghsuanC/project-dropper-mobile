@@ -26,3 +26,7 @@ export type RegisterData = { device_id: string };
 
 /** `GET /auth/me`. (`welcome_gif` is 🚧 on the server and not read yet.) */
 export type MeData = { device_id: string; name: string; platform: string };
+
+/** `GET /devices/paired`: the paired device (`paired_at` in Unix seconds), or null. */
+export type PairedDevice = { device_id: string; name: string; platform: string; paired_at: number };
+export type PairedDeviceData = { device: PairedDevice | null };
