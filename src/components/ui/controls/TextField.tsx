@@ -2,6 +2,7 @@
 // Controlled: the screen keeps the value. Every change runs `filter` first and then the
 // length limit, so a paste is cleaned before it's cut. The native `maxLength` is not used:
 // it would cut a paste before the filter could drop characters from it.
+import type { ReactNode } from 'react';
 import { StyleSheet, TextInput, View, type TextStyle } from 'react-native';
 
 import { strings } from '@/constants/strings';
@@ -23,6 +24,10 @@ type Props = {
   filter?: (text: string) => string;
   /** false: greyed text, input ignored (e.g. while submitting). */
   editable?: boolean;
+  /** Drawn inside the field, before the text (e.g. the search icon). */
+  icon?: ReactNode;
+  /** No visible label (the placeholder says it); screen readers still get `label`. */
+  labelHidden?: boolean;
   testID?: string;
 };
 
@@ -38,6 +43,8 @@ export function TextField({
   maxLength,
   filter,
   editable = true,
+  icon,
+  labelHidden = false,
   testID,
 }: Props) {
   const handleChange = (raw: string) => {
@@ -51,8 +58,9 @@ export function TextField({
 
   return (
     <View style={styles.field} testID={testID}>
-      <Text variant="label">{label}</Text>
+      {labelHidden ? null : <Text variant="label">{label}</Text>}
       <Bevel kind="field" testID={testID ? `${testID}-box` : undefined} innerStyle={styles.box}>
+        {icon}
         <TextInput
           value={value}
           onChangeText={handleChange}
@@ -86,8 +94,8 @@ export function TextField({
 
 const styles = StyleSheet.create({
   field: { gap: spacing.sm },
-  box: { paddingHorizontal: spacing.md },
-  input: { paddingVertical: spacing.md, paddingHorizontal: 0 },
+  box: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.md },
+  input: { flex: 1, paddingVertical: spacing.md, paddingHorizontal: 0 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
   hint: { flex: 1 },
 });

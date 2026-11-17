@@ -28,6 +28,7 @@ export const API_PATHS = {
   verifyChallenge: '/auth/verify-challenge',
   me: '/auth/me',
   pairedDevice: '/devices/paired',
+  sentFiles: '/files/sent',
 } as const;
 
 /** The `platform` this app registers as. */
@@ -50,6 +51,9 @@ export const DATE_LOCALE = 'en-US';
 
 /** How often Home re-reads the clock, so its greeting, date and quote stay current. */
 export const CLOCK_TICK_MS = 60_000;
+
+/** File names longer than this are cut, with "…", in file lists (2010 FileList). */
+export const FILE_NAME_MAX = 20;
 
 /** expo-secure-store keys. Allowed characters: letters, digits, `.`, `-`, `_`. */
 export const STORAGE_KEYS = {

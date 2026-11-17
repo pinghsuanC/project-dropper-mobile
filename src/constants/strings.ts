@@ -91,7 +91,26 @@ export const strings = {
     toHome: 'Paired, go to Home',
   },
   serverFiles: {
-    title: 'Server files',
+    title: 'Server status',
+    search: 'Search files',
+    empty: 'No files on server',
+    noMatch: (query: string) => `No files match "${query}"`,
+    loading: 'Loading…',
+    loadError: "Can't reach your server",
+    retry: 'Retry',
+    back: 'Back',
+  },
+  /** File sizes and times in file lists (lib/format.ts). */
+  format: {
+    size: { B: (n: string) => `${n} B`, KB: (n: string) => `${n} KB`, MB: (n: string) => `${n} MB`, GB: (n: string) => `${n} GB` },
+    today: (time: string) => `Today ${time}`,
+    yesterday: 'Yesterday',
+    /** A file row's second line. */
+    sizeAndWhen: (size: string, when: string) => `${size} · ${when}`,
+    /** What a screen reader says for a file row: the full name, then its second line. */
+    rowLabel: (name: string, detail: string) => `${name}, ${detail}`,
+    /** A `pending` file: its upload started but was never confirmed. */
+    incomplete: 'Incomplete',
   },
   upload: {
     title: 'Upload',

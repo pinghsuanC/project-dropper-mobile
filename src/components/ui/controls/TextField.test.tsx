@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { StyleSheet, Text } from 'react-native';
 
 import { strings } from '@/constants/strings';
 import { colors, tones } from '@/theme';
@@ -14,6 +14,8 @@ type HarnessProps = {
   maxLength?: number;
   filter?: (text: string) => string;
   editable?: boolean;
+  icon?: ReactNode;
+  labelHidden?: boolean;
   onChange?: (text: string) => void;
 };
 
@@ -146,4 +148,15 @@ test('screen readers get the label and the hint', async () => {
   await render(<Harness />);
   expect(input().props.accessibilityLabel).toBe('Your name');
   expect(input().props.accessibilityHint).toBe('What the app calls you.');
+});
+
+test('an icon shows inside the field, before the text', async () => {
+  await render(<Harness icon={<Text testID="field-icon">Q</Text>} />);
+  expect(screen.getByTestId('field-icon')).toBeTruthy();
+});
+
+test('labelHidden: no visible label, but screen readers still get it', async () => {
+  await render(<Harness labelHidden />);
+  expect(screen.queryByText('Your name')).toBeNull();
+  expect(input().props.accessibilityLabel).toBe('Your name');
 });

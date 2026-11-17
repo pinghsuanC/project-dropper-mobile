@@ -10,6 +10,8 @@ import { getSession } from '@/state/session';
 jest.mock('@/lib/startup', () => ({ runStartup: jest.fn(() => new Promise(() => {})) }));
 // Home's connection check calls the server; its results are tested in home.test.tsx.
 jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn(async () => 'unpaired') }));
+// Server files loads GET /files/sent; tested in server-files.test.tsx.
+jest.mock('@/api/files', () => ({ getSentFiles: jest.fn(async () => []) }));
 
 // SHOW_TESTING_MENU is fixed when config.ts loads (and Jest has no APP_ENV, so it's prod);
 // a getter added by defineProperty lets each test pick it.
@@ -29,12 +31,11 @@ beforeEach(() => {
   jest.mocked(runStartup).mockClear();
 });
 
-// Register and Home are built: their states change the screen itself (register.test.tsx,
-// home.test.tsx) instead of showing a state line.
+// Register, Home and Server files are built: their states change the screen itself
+// (register.test.tsx, home.test.tsx, server-files.test.tsx) instead of showing a state line.
 test.each([
   ['/pairing/scan', 'cameraNote'],
   ['/pairing/wait', 'error'],
-  ['/server-files', 'empty'],
   ['/upload', 'tooLarge'],
   ['/share', 'ready'],
   ['/properties', 'notPaired'],

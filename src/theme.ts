@@ -143,6 +143,8 @@ export const sizes = {
   balloon: { outline: 2, step: 2, steps: 3, tailLeft: 28, tail: 18, tailInset: 4 },
   /** Home (1060): how far the main window's big button sits in from each side. */
   homeActionInset: 12,
+  /** ListBox (2010): the list's height; longer lists scroll inside it. */
+  listBoxHeight: 190,
   /** Taskbar (2010): the strip's height. */
   taskbarHeight: 44,
   /** Testing menu (src/components/dev/): menu button height, so a row's two buttons match. */

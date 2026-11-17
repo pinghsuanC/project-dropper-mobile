@@ -1,5 +1,6 @@
 // Server request and response shapes (the server repo's API.md). snake_case, exactly as the
 // server's Pydantic models name them: a mismatch is a 422.
+import type { FileStatus } from '@/constants/enums';
 
 /** Every successful response: `{ message, data }`. */
 export type Envelope<T> = { message: string; data: T };
@@ -30,3 +31,18 @@ export type MeData = { device_id: string; name: string; platform: string };
 /** `GET /devices/paired`: the paired device (`paired_at` in Unix seconds), or null. */
 export type PairedDevice = { device_id: string; name: string; platform: string; paired_at: number };
 export type PairedDeviceData = { device: PairedDevice | null };
+
+/**
+ * One file of `GET /files/sent`: sent by this phone, not downloaded yet. `pending` = the
+ * upload started but was never confirmed. `created_at` in Unix seconds.
+ */
+export type SentFile = {
+  file_id: string;
+  file_name: string;
+  size: number;
+  status: Extract<FileStatus, typeof FileStatus.PENDING | typeof FileStatus.UPLOADED>;
+  receiver_name: string;
+  created_at: number;
+};
+/** Newest first; empty when nothing is waiting. */
+export type SentFilesData = SentFile[];

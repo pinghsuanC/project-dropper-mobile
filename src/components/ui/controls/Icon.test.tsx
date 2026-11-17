@@ -5,7 +5,7 @@ import { sizes, tones } from '@/theme';
 import { Icon, type IconName } from './Icon';
 
 const HIDDEN = { includeHiddenElements: true };
-const NAMES: IconName[] = ['monitor', 'globe', 'retry', 'gear'];
+const NAMES: IconName[] = ['monitor', 'globe', 'retry', 'gear', 'search'];
 
 test.each(NAMES)('%s draws an SVG at the default icon size', async (name) => {
   await render(<Icon name={name} testID="i" />);
@@ -38,6 +38,7 @@ test.each([
   ['globe', ['RNSVGCircle', 'RNSVGEllipse', 'RNSVGPath'], 24],
   ['retry', ['RNSVGPath', 'RNSVGPath'], 24],
   ['gear', ['RNSVGRect', 'RNSVGCircle'], 16],
+  ['search', ['RNSVGCircle', 'RNSVGPath'], 24],
 ] as const)('%s is drawn from its own shapes', async (name, parts, box) => {
   await render(<Icon name={name} testID="i" />);
   const json = JSON.stringify(screen.toJSON());
