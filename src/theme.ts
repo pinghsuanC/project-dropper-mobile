@@ -155,6 +155,10 @@ export const sizes = {
    * indeterminate, and the bar's height per size.
    */
   progressBar: { blocks: 20, run: 5, gap: 2, height: { default: 22, mini: 12 } },
+  /** StatusBar (2010): the "connected" dot's diameter. */
+  statusDot: 7,
+  /** FileList upload rows (2010): the mini progress bar's width beside the percent. */
+  uploadRowBar: 40,
   /** Pairing camera (1080): the corner brackets' arm length, stroke and inset from the edge. */
   qrBracket: { length: 28, stroke: 4, inset: '18%' },
   /** Testing menu (src/components/dev/): menu button height, so a row's two buttons match. */

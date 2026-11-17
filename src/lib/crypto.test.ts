@@ -1,7 +1,11 @@
 import * as ed from '@noble/ed25519';
 import { sha512 } from '@noble/hashes/sha2.js';
 
-import { deviceFingerprint, generateKeyPair, publicKeyFor, publicKeyToPem, signChallenge } from '@/lib/crypto';
+import * as fileSystem from 'expo-file-system';
+
+import { deviceFingerprint, fileChecksum, generateKeyPair, publicKeyFor, publicKeyToPem, signChallenge } from '@/lib/crypto';
+
+const fs = fileSystem as unknown as typeof import('../../__mocks__/expo-file-system');
 
 jest.mock('expo-crypto', () => ({
   getRandomBytesAsync: jest.fn(async (n: number) => globalThis.crypto.getRandomValues(new Uint8Array(n))),
@@ -78,5 +82,34 @@ describe('publicKeyFor', () => {
   it('gives the same public key generateKeyPair paired with the private key', async () => {
     const { privateKey, publicKey } = await generateKeyPair();
     expect(await publicKeyFor(privateKey)).toEqual(publicKey);
+  });
+});
+
+describe('fileChecksum (the upload `checksum`, CLAUDE.md crypto rules)', () => {
+  const SHA256_ABC = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+
+  beforeEach(() => fs.mockDigest.mockReset());
+
+  it("hashes the file at the uri with SHA-256 (native, streamed: the file isn't read into JS)", async () => {
+    fs.mockDigest.mockResolvedValueOnce(SHA256_ABC);
+    expect(await fileChecksum('file:///cache/abc.txt')).toBe(SHA256_ABC);
+    expect(fs.mockDigest).toHaveBeenCalledWith('file:///cache/abc.txt', 'SHA-256');
+  });
+
+  it('is lowercase hex, 64 characters, even if the platform answers in uppercase', async () => {
+    fs.mockDigest.mockResolvedValueOnce(SHA256_ABC.toUpperCase());
+    const checksum = await fileChecksum('file:///cache/abc.txt');
+    expect(checksum).toBe(SHA256_ABC);
+    expect(checksum).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('anything that is not a 64-char hex digest is an error, never sent', async () => {
+    fs.mockDigest.mockResolvedValueOnce('d41d8cd98f00b204e9800998ecf8427e');
+    await expect(fileChecksum('file:///cache/abc.txt')).rejects.toThrow();
+  });
+
+  it('a file that cannot be read rejects', async () => {
+    fs.mockDigest.mockRejectedValueOnce(new Error('no such file'));
+    await expect(fileChecksum('file:///cache/gone.txt')).rejects.toThrow();
   });
 });

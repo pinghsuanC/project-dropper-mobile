@@ -58,6 +58,14 @@ describe('fixed values', () => {
     expect(loadConfig({}).POPUP_REDIRECT_MS).toBe(2000);
   });
 
+  it('accepts uploads up to 100 MB, counted in 1024s', () => {
+    expect(loadConfig({}).MAX_UPLOAD_BYTES).toBe(104_857_600);
+  });
+
+  it('cancels an upload after 30 seconds without progress', () => {
+    expect(loadConfig({}).UPLOAD_STALL_TIMEOUT_MS).toBe(30_000);
+  });
+
   it('keeps every storage key within secure-store rules', () => {
     const keys = Object.values(loadConfig({}).STORAGE_KEYS);
     expect(new Set(keys).size).toBe(keys.length);

@@ -7,7 +7,7 @@ import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 
 import { colors, sizes, tones, type TextTone } from '@/theme';
 
-export type IconName = 'monitor' | 'globe' | 'retry' | 'gear' | 'search' | 'camera' | 'warning' | 'info';
+export type IconName = 'monitor' | 'globe' | 'retry' | 'gear' | 'search' | 'camera' | 'warning' | 'info' | 'folder' | 'close';
 export type IconSize = 'default' | 'start' | 'dialog';
 
 type Props = {
@@ -39,6 +39,14 @@ const line = { fill: 'none', stroke: 'currentColor', strokeWidth: sizes.icon.str
 /** Outline icons use a 24-unit box; the gear is a filled 16-unit pixel shape, as in the prototype. */
 // Coloured icons take the testID for their filled shape, so tests can check its colour.
 const SHAPES: Record<IconName, { viewBox: string; draw: React.ReactNode | ((fillID?: string) => React.ReactNode) }> = {
+  folder: {
+    viewBox: '0 0 24 24',
+    draw: <Path d="M3 6h6l2 2h10v11H3z" {...line} />,
+  },
+  close: {
+    viewBox: '0 0 24 24',
+    draw: <Path d="M6 6l12 12M18 6L6 18" {...line} />,
+  },
   camera: {
     viewBox: '0 0 24 24',
     draw: (

@@ -18,11 +18,14 @@ Provider: any component reads it, and code outside React reads it too.
 |---|---|---|
 | `deviceId`, `userName`, `deviceName` | `null` | `setIdentity({ deviceId, userName, deviceName })`; the names may be `null` (1010) |
 | `token` | `null` | `setToken(token \| null)` |
-| `pairedWith` | `null` (not paired) | `setPairedWith({ pcName } \| null)` |
+| `pairedWith` | `null` (not paired) | `setPairedWith({ pcName, deviceId } \| null)`; `deviceId` is the upload's `receiver_id` (1090) |
 | `quote` | first entry of `assets/quotes.json` | `setQuote(text)` |
+| `uploadQueue` | `[]` | `setUploadQueue(list \| (queue) => list)`, `updateQueuedFile(id, change)` (1090) |
+| `uploadSending` | `null` (not sending) | `setUploadSending({ run, current, total } \| null)`; `current` 0 = preparing; `run` tells a send apart, so a replaced one stops |
+| `uploadOutcome` | `null` | `setUploadOutcome({ kind: 'sent', count } \| { kind: 'partial', sent, total } \| null)`: how the last send ended, until its popup closes |
 | (all) | | `reset()` back to the start values |
 
-`gifs` and `uploadQueue` (1010) are added with their features.
+`gifs` (1010) is added with its feature. The upload fields came with Upload Part 2 (2026-11-17).
 
 **Why Zustand over React Context:** `api/client.ts` needs the token outside React, which a
 Context can't give without extra plumbing; and with a Context every reader re-renders on

@@ -1,4 +1,4 @@
-// Inline (non-modal) question in a Window: a prompt and two buttons (2010). Its title-bar
+// Inline (non-modal) question in a Window: a prompt, an optional muted note, and two buttons (2010). Its title-bar
 // buttons are all disabled, so it can't be closed: the screen decides when it shows.
 import { StyleSheet, View } from 'react-native';
 
@@ -13,15 +13,22 @@ type Choice = { label: string; onPress: () => void; disabled?: boolean };
 type Props = {
   title: string;
   prompt: string;
+  /** Muted small print under the prompt. */
+  note?: string;
   primary: Choice;
   secondary: Choice;
   testID?: string;
 };
 
-export function ConfirmWindow({ title, prompt, primary, secondary, testID }: Props) {
+export function ConfirmWindow({ title, prompt, note, primary, secondary, testID }: Props) {
   return (
     <Window title={title} testID={testID}>
       <Text>{prompt}</Text>
+      {note ? (
+        <Text variant="caption" tone="muted">
+          {note}
+        </Text>
+      ) : null}
       <View style={styles.buttons}>
         {[primary, secondary].map((choice) => (
           <Button

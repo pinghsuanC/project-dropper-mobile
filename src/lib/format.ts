@@ -18,15 +18,17 @@ export function formatSize(bytes: number): string {
   return strings.format.size[UNITS[unit]](text);
 }
 
+/** "4:12 PM": the time of day (Upload's status bar, and "Today …" in file lists). */
+export function formatTime(date: Date): string {
+  // ICU puts a narrow no-break space before AM/PM; show a plain one.
+  return date.toLocaleTimeString(DATE_LOCALE, { hour: 'numeric', minute: '2-digit' }).replace(/\s/g, ' ');
+}
+
 /** "Today 4:12 PM", "Yesterday", "Nov 10", or "Nov 10, 2025" for an earlier year. */
 export function formatWhen(unixSeconds: number, now: Date): string {
   const then = new Date(unixSeconds * 1000);
   const daysAgo = localDayNumber(now) - localDayNumber(then);
-  if (daysAgo === 0) {
-    // ICU puts a narrow no-break space before AM/PM; show a plain one.
-    const time = then.toLocaleTimeString(DATE_LOCALE, { hour: 'numeric', minute: '2-digit' }).replace(/\s/g, ' ');
-    return strings.format.today(time);
-  }
+  if (daysAgo === 0) return strings.format.today(formatTime(then));
   if (daysAgo === 1) return strings.format.yesterday;
   const sameYear = then.getFullYear() === now.getFullYear();
   return then.toLocaleDateString(DATE_LOCALE, { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });

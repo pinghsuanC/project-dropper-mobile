@@ -31,12 +31,11 @@ beforeEach(() => {
   jest.mocked(runStartup).mockClear();
 });
 
-// Register, Home, Server files and Pairing step 1 are built: their states change the screen itself
+// Register, Home, Server files, Pairing step 1 and Upload are built: their states change the screen itself
 // (register.test.tsx, home.test.tsx, server-files.test.tsx,
-// pairing-scan.test.tsx) instead of showing a state line.
+// pairing-scan.test.tsx, upload.test.tsx) instead of showing a state line.
 test.each([
   ['/pairing/wait', 'error'],
-  ['/upload', 'tooLarge'],
   ['/share', 'ready'],
   ['/properties', 'notPaired'],
 ])('%s?state=%s shows that state', async (path, state) => {
@@ -45,7 +44,7 @@ test.each([
   expect(screen.getByText(strings.dev.stateLine(state))).toBeTruthy();
 });
 
-test.each(['/upload', '/properties'])('%s ignores a state it does not have', async (path) => {
+test.each(['/share', '/properties'])('%s ignores a state it does not have', async (path) => {
   await openAt(`${path}?state=bogus`);
   expect(screen.queryByText(strings.dev.stateLine('bogus'))).toBeNull();
 });
@@ -58,9 +57,9 @@ test('Register ignores a state it does not have: no dialog', async () => {
 
 test('prod builds ignore the state', async () => {
   mockShowMenu = false;
-  await openAt('/upload?state=tooLarge');
-  expect(screen.getByRole('header', { name: strings.upload.title })).toBeTruthy();
-  expect(screen.queryByText(strings.dev.stateLine('tooLarge'))).toBeNull();
+  await openAt('/share?state=ready');
+  expect(screen.getByRole('header', { name: strings.share.title })).toBeTruthy();
+  expect(screen.queryByText(strings.dev.stateLine('ready'))).toBeNull();
 });
 
 test('prod builds ignore Home states: the look follows the check', async () => {

@@ -1,14 +1,18 @@
-// A ListBox of files (2010), the server variant: each row is the name, cut to FILE_NAME_MAX,
-// over a muted "size · type · Uploaded when · status" line (type from the name's extension;
-// type and status left out when missing).
-// Upload's status variants (Sent ✓, %, Waiting, Failed, Too large) come later.
-import { StyleSheet, View } from 'react-native';
+// A ListBox of files (2010), in two variants:
+// - server (default): each row is the name, cut to FILE_NAME_MAX, over a muted
+//   "size · type · Uploaded when · status" line (type from the name's extension; type and
+//   status left out when missing).
+// - upload: one line per file, name and size, then by status: a ✕ (queued), the percent and
+//   a mini progress bar (sending), "Waiting", or "Failed" in the error tone.
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { strings } from '@/constants/strings';
 import { fileType, formatSize, formatWhen, trimName } from '@/lib/format';
-import { spacing } from '@/theme';
+import { sizes, spacing } from '@/theme';
 
+import { Icon } from '../controls/Icon';
 import { ListBox } from '../controls/ListBox';
+import { ProgressBar } from '../controls/ProgressBar';
 import { Text } from '../primitives/Text';
 
 /**
@@ -17,21 +21,49 @@ import { Text } from '../primitives/Text';
  */
 export type FileRow = { id: string; name: string; size: number; createdAt: number; status?: string };
 
-type Props = {
-  files: FileRow[];
-  emptyText: string;
-  /** "Today" and "Yesterday" are counted from here. */
-  now: Date;
-  testID?: string;
+/** One file in the upload queue. `progress` (0–1) is shown while `sending`. */
+export type UploadRow = {
+  id: string;
+  name: string;
+  size: number;
+  status: 'queued' | 'waiting' | 'sending' | 'failed';
+  progress?: number;
 };
 
-export function FileList({ files, emptyText, now, testID }: Props) {
+type Common = { emptyText: string; testID?: string };
+type ServerProps = Common & {
+  variant?: 'server';
+  files: FileRow[];
+  /** "Today" and "Yesterday" are counted from here. */
+  now: Date;
+};
+type UploadProps = Common & {
+  variant: 'upload';
+  files: UploadRow[];
+  /** A queued row's ✕. */
+  onRemove: (id: string) => void;
+};
+
+export function FileList(props: ServerProps | UploadProps) {
+  if (props.variant === 'upload') {
+    const { onRemove } = props;
+    return (
+      <ListBox
+        items={props.files}
+        keyOf={(file) => file.id}
+        emptyText={props.emptyText}
+        testID={props.testID}
+        renderRow={(file) => <UploadFileRow file={file} onRemove={onRemove} />}
+      />
+    );
+  }
+  const { now } = props;
   return (
     <ListBox
-      items={files}
+      items={props.files}
       keyOf={(file) => file.id}
-      emptyText={emptyText}
-      testID={testID}
+      emptyText={props.emptyText}
+      testID={props.testID}
       renderRow={(file) => {
         const detail = strings.format.fileDetail({
           size: formatSize(file.size),
@@ -41,7 +73,7 @@ export function FileList({ files, emptyText, now, testID }: Props) {
         });
         return (
           // One stop for screen readers, with the full name.
-          <View accessible accessibilityLabel={strings.format.rowLabel(file.name, detail)} style={styles.row}>
+          <View accessible accessibilityLabel={strings.format.rowLabel(file.name, detail)} style={styles.serverRow}>
             <Text>{trimName(file.name)}</Text>
             <Text variant="caption" tone="muted">
               {detail}
@@ -53,6 +85,58 @@ export function FileList({ files, emptyText, now, testID }: Props) {
   );
 }
 
+const u = strings.upload;
+
+function UploadFileRow({ file, onRemove }: { file: UploadRow; onRemove: (id: string) => void }) {
+  const size = formatSize(file.size);
+  const percent = Math.round((file.progress ?? 0) * 100);
+  const statusText =
+    file.status === 'sending' ? u.percent(percent) : file.status === 'waiting' ? u.waiting : file.status === 'failed' ? u.failed : undefined;
+
+  return (
+    <View style={styles.uploadRow}>
+      {/* Name, size and status are one screen-reader stop; the ✕ is its own button. */}
+      <View accessible accessibilityLabel={u.rowLabel(file.name, size, statusText)} style={styles.uploadInfo}>
+        <View style={styles.name}>
+          <Text numberOfLines={1}>{trimName(file.name)}</Text>
+        </View>
+        <Text tone="muted">{size}</Text>
+        {file.status === 'sending' ? (
+          <View style={styles.sending}>
+            <View style={styles.miniBar}>
+              <ProgressBar value={file.progress ?? 0} size="mini" />
+            </View>
+            <Text>{statusText}</Text>
+          </View>
+        ) : null}
+        {file.status === 'waiting' ? <Text tone="muted">{statusText}</Text> : null}
+        {file.status === 'failed' ? (
+          <Text bold tone="error">
+            {statusText}
+          </Text>
+        ) : null}
+      </View>
+      {file.status === 'queued' ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={u.remove(file.name)}
+          onPress={() => onRemove(file.id)}
+          hitSlop={(sizes.touchTarget - sizes.icon.start) / 2}
+          style={styles.remove}
+        >
+          <Icon name="close" size="start" />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  row: { gap: spacing.xxs },
+  serverRow: { gap: spacing.xxs },
+  uploadRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  uploadInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  name: { flex: 1 },
+  sending: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  miniBar: { width: sizes.uploadRowBar },
+  remove: { padding: spacing.xs },
 });

@@ -1,6 +1,6 @@
 // File sizes, times and names in file lists (2010 FileList), as the prototype shows them.
 import { FILE_NAME_MAX } from '@/constants/config';
-import { fileType, formatSize, formatWhen, trimName } from '@/lib/format';
+import { fileType, formatSize, formatTime, formatWhen, trimName } from '@/lib/format';
 
 const KB = 1024;
 const MB = 1024 ** 2;
@@ -83,5 +83,12 @@ describe('fileType', () => {
     expect(fileType('Makefile')).toBeUndefined();
     expect(fileType('.gitignore')).toBeUndefined();
     expect(fileType('notes.')).toBeUndefined();
+  });
+});
+
+describe('formatTime', () => {
+  test('hours and minutes with AM / PM and a plain space', () => {
+    expect(formatTime(new Date(2026, 10, 13, 13, 51))).toBe('1:51 PM');
+    expect(formatTime(new Date(2026, 10, 13, 0, 5))).toBe('12:05 AM');
   });
 });
