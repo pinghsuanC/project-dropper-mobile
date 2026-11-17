@@ -5,6 +5,7 @@ import { sha256, sha512 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 import * as Application from 'expo-application';
 import * as Crypto from 'expo-crypto';
+import { File } from 'expo-file-system';
 
 // Hermes has no WebCrypto, so give noble its SHA-512 directly (sync and async paths).
 ed.hashes.sha512 = sha512;
@@ -51,4 +52,14 @@ export async function signChallenge(challenge: string, privateKey: Uint8Array): 
 /** Lowercase hex SHA-256 of the Android ID (Android only). */
 export function deviceFingerprint(): string {
   return bytesToHex(sha256(utf8ToBytes(Application.getAndroidId())));
+}
+
+/**
+ * The upload `checksum`: lowercase hex SHA-256 of the file's bytes (64 chars). Hashed natively
+ * by expo-file-system in small reads, so a 100 MB file never sits in JS memory.
+ */
+export async function fileChecksum(uri: string): Promise<string> {
+  const digest = (await new File(uri).digest('SHA-256')).toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(digest)) throw new Error('Not a SHA-256 digest');
+  return digest;
 }

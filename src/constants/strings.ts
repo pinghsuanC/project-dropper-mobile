@@ -166,6 +166,8 @@ export const strings = {
     serverError: "Can't reach server",
     fileCount: (n: number) => (n === 1 ? '1 file' : `${n} files`),
     sendingCount: (current: number, total: number) => `Sending ${current} of ${total}`,
+    /** Before the first file goes: checksums and the server's go-ahead. */
+    preparing: 'Preparing…',
     /** Picking files. */
     tooLargeOne: (name: string, size: string, max: string) => `${name} is too large (${size}). Files can be up to ${max}.`,
     tooLargeMany: (count: number, max: string) => `${count} files are too large. Files can be up to ${max}.`,
@@ -177,6 +179,8 @@ export const strings = {
     complete: 'Upload complete',
     sent: (n: number) => (n === 1 ? '1 file sent to your PC.' : `${n} files sent to your PC.`),
     partial: (sent: number, total: number) => `${sent} of ${total} sent. Please retry.`,
+    /** Any failure, until Part 3 shows which files failed. */
+    uploadFailed: 'Upload failed. Please try again.',
     ok: 'OK',
     /** The Back window. */
     backTitle: 'Back',

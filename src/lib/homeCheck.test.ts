@@ -35,14 +35,14 @@ it('calls GET /auth/me with the session token', async () => {
   expect(init.headers.Authorization).toBe('Bearer secret-token');
 });
 
-it('paired: returns "paired" and puts the PC in the session', async () => {
+it('paired: returns "paired" and puts the PC in the session, with its device_id for uploads', async () => {
   meOk();
   expect(await checkConnection()).toBe('paired');
-  expect(getSession().pairedWith).toEqual({ pcName: 'DESKTOP-01' });
+  expect(getSession().pairedWith).toEqual({ pcName: 'DESKTOP-01', deviceId: PC.device_id });
 });
 
 it('not paired (device null): returns "unpaired" and clears pairedWith', async () => {
-  getSession().setPairedWith({ pcName: 'OLD-PC' });
+  getSession().setPairedWith({ pcName: 'OLD-PC', deviceId: 'old' });
   mockGetPairedDevice.mockResolvedValue(null);
   meOk();
   expect(await checkConnection()).toBe('unpaired');
@@ -61,9 +61,9 @@ it('server unreachable: "serverError", never throws', async () => {
 });
 
 it('getPairedDevice fails: "serverError", pairedWith unchanged', async () => {
-  getSession().setPairedWith({ pcName: 'OLD-PC' });
+  getSession().setPairedWith({ pcName: 'OLD-PC', deviceId: 'old' });
   mockGetPairedDevice.mockRejectedValue(new Error('boom'));
   meOk();
   expect(await checkConnection()).toBe('serverError');
-  expect(getSession().pairedWith).toEqual({ pcName: 'OLD-PC' });
+  expect(getSession().pairedWith).toEqual({ pcName: 'OLD-PC', deviceId: 'old' });
 });

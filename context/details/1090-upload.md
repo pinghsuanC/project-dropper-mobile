@@ -1,11 +1,11 @@
 # 1090: Upload
 
-Accepted, Part 1 (UI) implemented · 2026-11-17 · Part of [1000 App](1000-app.md)
+Accepted, Parts 1 (UI) and 2 (sending) implemented · 2026-11-17 · Part of [1000 App](1000-app.md)
 
 The "Pending upload" screen (`/upload`, in the `(taskbar)` group), opened from Home's
 "Do you want to upload? Yes". The user picks files into a queue and sends them to the
 paired PC. Prototypes: `context/prototypes/upload/`. Built in three parts on
-`feature-branch-upload`: 1 the UI (this record), 2 sending, 3 failures and Retry.
+`feature-branch-upload`: 1 the UI, 2 sending, 3 failures and Retry.
 Components are in [2010](2010-components.md); GIF slots in [2040](2040-gifs.md).
 
 ## Layout (top to bottom, scrolls on short screens)
@@ -33,11 +33,12 @@ Laid out like Server status ([1070](1070-server-files.md)), and shares its name 
 |---|---|
 | Clear all | the queue isn't empty and nothing is sending |
 | Add… | nothing is sending |
-| Upload | Part 1: never. Part 2: connected, queue not empty, nothing sending |
+| Upload | connected (`paired`), a `queued` file, nothing sending, not a testing-menu look |
 
 ## The queue (`lib/uploadQueue.ts`)
 
-Pure rules; the screen keeps the queue in state (Part 2 moves it into the session store, 1010).
+Pure rules here; the queue itself lives in the session store (`uploadQueue`, 1030), so it
+outlives the screen. Not kept across app restarts.
 
 - **Add…** opens `expo-document-picker` (`multiple: true`, `copyToCacheDirectory: true`).
   Cancel changes nothing; a picker failure shows "Couldn't open your files…".
@@ -76,7 +77,44 @@ Back closes it.
 (`components/dev/mockUploadQueue.ts`), skipping the connection check (shown as
 Connected). Plain `/upload` is the real empty start.
 
-## Still open (Parts 2 and 3)
+## Sending (Part 2, `lib/sendQueue.ts`)
 
-Sending (checksum, `prepare-batch-upload`, PUT to R2, `finish-batch-upload`, progress),
-keeping in-progress files when leaving, failures and Retry: see the parts file.
+`sendQueue()` runs outside React and reports into the session store (`uploadQueue`,
+`uploadSending`, `uploadOutcome`, 1030), so a send carries on when the user leaves `/upload`
+and the screen shows the same state on return. It never throws.
+
+1. Every `queued` file turns `waiting`; `uploadSending` = 0 of m: the status bar reads
+   "Preparing…".
+2. **Checksum** per file: `fileChecksum(uri)` in `lib/crypto.ts`, `expo-file-system`
+   `File.digest('SHA-256')`. Hashed natively in 64 KB reads, so a 100 MB file never sits
+   in JS memory; checked to be 64 lowercase hex characters.
+3. One **`POST /files/prepare-batch-upload`** to the paired PC (`pairedWith.deviceId`),
+   `client_ref` `q0`, `q1`, … in queue order; `content_type` = the picker's `mimeType`, else
+   `DEFAULT_CONTENT_TYPE` (`config.ts`). Results are matched by `client_ref`, not position.
+4. Each file is **PUT** to its `upload_url` one at a time, in order (`api/upload.ts`
+   `putFile`: `File.upload` with `httpMethod: 'PUT'`, raw bytes, no auth header). The
+   status bar reads "Sending n of m"; the row shows `%` and the mini bar from the upload's
+   progress. A non-2xx answer from R2 is a failure (the upload resolves on any status). The
+   url never reaches a log or an error. **Stall timeout:** no progress for
+   `UPLOAD_STALL_TIMEOUT_MS` (30 s, `config.ts`) cancels the upload through its `signal`,
+   and it fails like any other; each progress report restarts the wait, so a slow but moving
+   100 MB upload is never cut (the server calls keep `api/client.ts`'s 10 s timeout).
+5. A file whose PUT worked **leaves the list** (`upload-in-progress.png`: "Sending 2 of 3"
+   over two rows). One that failed reads "Waiting" until the send ends.
+6. One **`POST /files/finish-batch-upload`** with the `file_id`s whose PUT worked.
+7. All confirmed: outcome `sent` → the info popup "N files sent to your PC.". OK (or
+   Android Back) clears the outcome.
+
+**Failure stopgap (until Part 3):** anything else going wrong (a checksum, prepare, a PUT,
+finish, offline) leaves those files unconfirmed. Every unconfirmed file of the send goes
+back to `queued`, in its first order, at the front of the queue, and the outcome is `failed`:
+the error popup "Upload failed. Please try again.". Old server rows a failed send left in
+`pending` stay until `/files/cancel` exists.
+
+A testing-menu look keeps its own mock queue: it never reads or changes the store, and its
+Upload stays disabled.
+
+## Still open (Part 3)
+
+Failed rows, the partial popup for real ("2 of 3 sent"), Retry, what 401 / 403 / 404 / 409
+show, dropping failed files on leaving: see the parts file.

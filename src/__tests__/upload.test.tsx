@@ -1,6 +1,7 @@
-// The Upload screen, "Pending upload" (context/details/1090), Part 1: the queue, picking files,
+// The Upload screen, "Pending upload" (context/details/1090). Part 1: the queue, picking files,
 // the size limit, search, the status bar, the Back window, and every look the testing menu
-// opens. Sending itself comes in Part 2, so Upload stays disabled here.
+// opens. Part 2: Upload, the queue and sending state from the session store (so they outlive
+// the screen), and the result popups. The send loop itself is tested in lib/sendQueue.
 import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 import * as picker from 'expo-document-picker';
 import { router } from 'expo-router';
@@ -9,9 +10,13 @@ import { BackHandler, StyleSheet } from 'react-native';
 import { MAX_UPLOAD_BYTES } from '@/constants/config';
 import { strings } from '@/constants/strings';
 import { checkConnection, type ConnectionResult } from '@/lib/homeCheck';
+import { sendQueue } from '@/lib/sendQueue';
+import type { QueuedFile } from '@/lib/uploadQueue';
+import { getSession } from '@/state/session';
 import { tones } from '@/theme';
 
 jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn() }));
+jest.mock('@/lib/sendQueue', () => ({ sendQueue: jest.fn(async () => {}) }));
 // Landing runs start-up on mount; keep it pending so nothing calls the server.
 jest.mock('@/lib/startup', () => ({ runStartup: jest.fn(() => new Promise(() => {})) }));
 // Testing-menu states need SHOW_TESTING_MENU (fixed at import; Jest has no APP_ENV).
@@ -23,6 +28,7 @@ const u = strings.upload;
 const MB = 1024 ** 2;
 const checkMock = jest.mocked(checkConnection);
 const pickMock = jest.mocked(picker.getDocumentAsync);
+const sendMock = jest.mocked(sendQueue);
 
 type Asset = { name: string; size?: number; mimeType?: string };
 function willPick(...assets: Asset[]) {
@@ -47,6 +53,8 @@ const BACK_EVENT = {} as Parameters<BackListener>[0];
 let backHandlers: BackListener[] = [];
 
 beforeEach(() => {
+  getSession().reset();
+  sendMock.mockClear();
   checkMock.mockReset();
   checkMock.mockResolvedValue('paired');
   pickMock.mockClear();
@@ -215,9 +223,142 @@ describe('the queue', () => {
     expect(within(list()).getByText(u.noMatch('zip'), HIDDEN)).toBeTruthy();
   });
 
-  test('Upload stays disabled (sending comes in Part 2)', async () => {
+  test('the queue is kept when leaving the screen and coming back (session store)', async () => {
     await withFiles();
+    await act(() => router.dismissTo('/home'));
+    await act(() => router.push('/upload'));
+    expect(within(list()).getByText('holiday-photo.jpg', HIDDEN)).toBeTruthy();
+    expect(within(list()).getByText('report-final.pdf', HIDDEN)).toBeTruthy();
+  });
+});
+
+const queued = (name: string, change: Partial<QueuedFile> = {}): QueuedFile => ({
+  id: `file:///cache/${name}`,
+  uri: `file:///cache/${name}`,
+  name,
+  size: 2048,
+  status: 'queued',
+  ...change,
+});
+
+describe('Upload', () => {
+  test('enabled when connected and the queue has files', async () => {
+    getSession().setUploadQueue([queued('a.txt')]);
+    await open();
+    expect(disabled(u.upload)).toBe(false);
+  });
+
+  test('disabled while the connection check runs', async () => {
+    checkMock.mockReturnValue(new Promise(() => {}));
+    getSession().setUploadQueue([queued('a.txt')]);
+    await open();
     expect(disabled(u.upload)).toBe(true);
+  });
+
+  test.each(['unpaired', 'serverError'] as ConnectionResult[])('disabled when %s', async (result) => {
+    checkMock.mockResolvedValue(result);
+    getSession().setUploadQueue([queued('a.txt')]);
+    await open();
+    expect(disabled(u.upload)).toBe(true);
+  });
+
+  test('disabled with an empty queue', async () => {
+    await open();
+    expect(disabled(u.upload)).toBe(true);
+  });
+
+  test('pressing it sends the queue', async () => {
+    getSession().setUploadQueue([queued('a.txt')]);
+    await open();
+    await press(u.upload);
+    expect(sendMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('sending (from the store)', () => {
+  const sendingLook = async (current: number) => {
+    getSession().setUploadQueue([
+      queued('a.txt', { status: current === 0 ? 'waiting' : 'sending', progress: 0.4 }),
+      queued('b.txt', { status: 'waiting' }),
+    ]);
+    getSession().setUploadSending({ current, total: 2 });
+    await open();
+  };
+
+  test('preparing: "Preparing…", the sending GIF, the rolling bar; Add…, Clear all and Upload disabled', async () => {
+    await sendingLook(0);
+    expect(within(status()).getByText(u.preparing, HIDDEN)).toBeTruthy();
+    expect(screen.getByTestId('upload-sending-gif', HIDDEN)).toBeTruthy();
+    expect(screen.queryByLabelText(u.search)).toBeNull();
+    expect(screen.getByTestId('upload-running')).toBeTruthy();
+    expect(disabled(u.sending)).toBe(true);
+    expect(disabled(u.add)).toBe(true);
+    expect(disabled(u.clearAll)).toBe(true);
+  });
+
+  test('a file sending: "Sending 1 of 2", its % on the row, the rest Waiting', async () => {
+    await sendingLook(1);
+    expect(within(status()).getByText(u.sendingCount(1, 2), HIDDEN)).toBeTruthy();
+    expect(within(list()).getByText(u.percent(40), HIDDEN)).toBeTruthy();
+    expect(within(list()).getByText(u.waiting, HIDDEN)).toBeTruthy();
+  });
+
+  test('progress from the store shows as it changes', async () => {
+    await sendingLook(1);
+    await act(async () => getSession().updateQueuedFile('file:///cache/a.txt', { progress: 0.9 }));
+    expect(within(list()).getByText(u.percent(90), HIDDEN)).toBeTruthy();
+  });
+
+  test('when the send ends, the normal look comes back', async () => {
+    await sendingLook(1);
+    await act(async () => {
+      getSession().setUploadSending(null);
+      getSession().setUploadQueue([]);
+    });
+    expect(screen.getByLabelText(u.search)).toBeTruthy();
+    expect(screen.queryByTestId('upload-running')).toBeNull();
+    expect(within(status()).getByText(u.fileCount(0), HIDDEN)).toBeTruthy();
+  });
+});
+
+describe('result popups (from the store)', () => {
+  test('all sent: the Upload complete popup; OK closes it and clears the outcome', async () => {
+    getSession().setUploadOutcome({ kind: 'sent', count: 2 });
+    await open();
+    expect(screen.getByText(u.popupTitle)).toBeTruthy();
+    expect(screen.getByText(u.complete)).toBeTruthy();
+    expect(screen.getByText(u.sent(2))).toBeTruthy();
+    await press(u.ok);
+    expect(dialog()).toBeNull();
+    expect(getSession().uploadOutcome).toBeNull();
+  });
+
+  test('one file: "1 file sent to your PC."', async () => {
+    getSession().setUploadOutcome({ kind: 'sent', count: 1 });
+    await open();
+    expect(screen.getByText(u.sent(1))).toBeTruthy();
+  });
+
+  test('a send that ends while the screen is open shows its popup', async () => {
+    await open();
+    await act(async () => getSession().setUploadOutcome({ kind: 'sent', count: 3 }));
+    expect(screen.getByText(u.sent(3))).toBeTruthy();
+  });
+
+  test('failed: the error popup; the files are queued again', async () => {
+    getSession().setUploadQueue([queued('a.txt')]);
+    getSession().setUploadOutcome({ kind: 'failed' });
+    await open();
+    expect(screen.getByText(u.uploadFailed)).toBeTruthy();
+    expect(within(list()).getByText('a.txt', HIDDEN)).toBeTruthy();
+  });
+
+  test('Android Back closes the result popup and clears the outcome', async () => {
+    getSession().setUploadOutcome({ kind: 'failed' });
+    await open();
+    await act(async () => backHandlers.at(-1)?.(BACK_EVENT));
+    expect(dialog()).toBeNull();
+    expect(getSession().uploadOutcome).toBeNull();
   });
 });
 
@@ -335,5 +476,16 @@ describe('testing-menu looks', () => {
     await open('?state=inProgress');
     expect(checkMock).not.toHaveBeenCalled();
     expect(within(status()).getByText(u.connected, HIDDEN)).toBeTruthy();
+  });
+
+  test('a look uses its own mock queue: the store is left alone and Upload sends nothing', async () => {
+    getSession().setUploadQueue([queued('real.txt')]);
+    await open('?state=tooLarge');
+    expect(within(list()).queryByText('real.txt', HIDDEN)).toBeNull();
+    await press(u.ok);
+    // Connected, with queued mock files: still disabled, a look never sends.
+    expect(disabled(u.upload)).toBe(true);
+    await press(u.clearAll);
+    expect(getSession().uploadQueue).toEqual([queued('real.txt')]);
   });
 });

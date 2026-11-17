@@ -3,11 +3,18 @@
 // particular is never written to storage or logged.
 import { create } from 'zustand';
 
+import type { QueuedFile } from '@/lib/uploadQueue';
+
 // Relative: jest-expo maps every `@/…` to src/, so `@/assets/…` doesn't resolve in Jest.
 import defaultQuotes from '../../assets/quotes.json';
 
 export type Quote = { text: string };
-export type PairedPc = { pcName: string };
+/** The paired PC: its name for Home, its `device_id` as the upload's `receiver_id`. */
+export type PairedPc = { pcName: string; deviceId: string };
+/** A running upload: `current` = the file being sent (1…total), 0 while preparing. */
+export type UploadSending = { current: number; total: number };
+/** How the last upload ended, until its popup is closed. */
+export type UploadOutcome = { kind: 'sent'; count: number } | { kind: 'failed' };
 /** Names can be missing: the user name is local only and optional (1010). */
 export type Identity = { deviceId: string; userName: string | null; deviceName: string | null };
 
@@ -20,6 +27,10 @@ type SessionState = {
   /** null = not paired. */
   pairedWith: PairedPc | null;
   quote: Quote;
+  /** The Upload queue (1090): kept here so it outlives the screen; not across restarts. */
+  uploadQueue: QueuedFile[];
+  uploadSending: UploadSending | null;
+  uploadOutcome: UploadOutcome | null;
 };
 
 type SessionActions = {
@@ -27,6 +38,10 @@ type SessionActions = {
   setToken: (token: string | null) => void;
   setPairedWith: (pc: PairedPc | null) => void;
   setQuote: (text: string) => void;
+  setUploadQueue: (next: QueuedFile[] | ((queue: QueuedFile[]) => QueuedFile[])) => void;
+  updateQueuedFile: (id: string, change: Partial<Omit<QueuedFile, 'id'>>) => void;
+  setUploadSending: (sending: UploadSending | null) => void;
+  setUploadOutcome: (outcome: UploadOutcome | null) => void;
   reset: () => void;
 };
 
@@ -39,6 +54,9 @@ const initialState = (): SessionState => ({
   token: null,
   pairedWith: null,
   quote: { text: defaultQuotes[0].text },
+  uploadQueue: [],
+  uploadSending: null,
+  uploadOutcome: null,
 });
 
 export const useSessionStore = create<Session>()((set) => ({
@@ -47,6 +65,11 @@ export const useSessionStore = create<Session>()((set) => ({
   setToken: (token) => set({ token }),
   setPairedWith: (pairedWith) => set({ pairedWith }),
   setQuote: (text) => set({ quote: { text } }),
+  setUploadQueue: (next) => set((s) => ({ uploadQueue: typeof next === 'function' ? next(s.uploadQueue) : next })),
+  updateQueuedFile: (id, change) =>
+    set((s) => ({ uploadQueue: s.uploadQueue.map((file) => (file.id === id ? { ...file, ...change } : file)) })),
+  setUploadSending: (uploadSending) => set({ uploadSending }),
+  setUploadOutcome: (uploadOutcome) => set({ uploadOutcome }),
   reset: () => set(initialState()),
 }));
 
