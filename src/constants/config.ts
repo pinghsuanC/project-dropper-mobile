@@ -52,6 +52,12 @@ export const DATE_LOCALE = 'en-US';
 /** How often Home re-reads the clock, so its greeting, date and quote stay current. */
 export const CLOCK_TICK_MS = 60_000;
 
+/**
+ * The largest file Upload accepts: 100 MB, counted in 1024s as file sizes are shown
+ * (lib/format.ts). Files over it are turned away when picked (1090). The server has no limit.
+ */
+export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+
 /** File names longer than this are cut, with "…", in file lists (2010 FileList). */
 export const FILE_NAME_MAX = 20;
 

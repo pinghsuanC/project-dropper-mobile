@@ -132,6 +132,22 @@ Props added while building, beyond the tables above:
 - **Fonts**: `src/components/ui/fonts.ts` maps family names to font files; the root layout
   loads it with `useFonts`.
 
+## As built (2026-11-17, Upload part 1)
+
+- **StatusBar** (controls): `segments: { text, dot? }[]`. A sunken Bevel, segments right
+  aligned in caption text with muted `|` between them; `dot` adds the green
+  (`success`, `sizes.statusDot`) "connected" dot after the text. One screen-reader stop,
+  read as "a, b, c".
+- **FileList**, upload variant (`variant="upload"`, `files: UploadRow[]`, `onRemove`):
+  `UploadRow` = `{ id, name, size, status: queued | waiting | sending | failed, progress? }`.
+  One line: name (cut) · size (muted) · then ✕ (queued only; the `close` Icon in a
+  pressable labelled "Remove name", 44px target), `%` + a `mini` ProgressBar
+  (`sizes.uploadRowBar` wide) for sending, "Waiting" (muted), "Failed" (bold, error).
+  Name, size and status are one screen-reader stop; the ✕ is its own button. "Sent ✓" and
+  "Too large" rows aren't used: sent files leave the queue and too-large ones never join.
+- **ConfirmWindow**: `note?`, a muted caption under the prompt.
+- **Icon**: `folder` (Add…) and `close` (a row's ✕), 24-unit line icons.
+
 ## As built (2026-11-17, Pairing step 1)
 
 - **ProgressBar** (controls): `value?` (0–1, clamped; announced as `{ min: 0, max: 100, now }`),

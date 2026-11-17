@@ -74,3 +74,11 @@ test('the dialog size matches the Dialog error icon', async () => {
   await render(<Icon name="info" size="dialog" testID="i" />);
   expect(screen.getByTestId('i', HIDDEN).props.width).toBe(sizes.dialogIcon.size);
 });
+
+test.each(['folder', 'close'] as const)('%s is a line icon in the tone colour', async (name) => {
+  await render(<Icon name={name} tone="disabled" testID="i" />);
+  const svg = screen.getByTestId('i', HIDDEN);
+  expect(svg.props.vbWidth).toBe(24);
+  expect(svg.props.color).toBe(tones.disabled);
+  expect(JSON.stringify(screen.toJSON())).toContain('"type":"RNSVGPath"');
+});

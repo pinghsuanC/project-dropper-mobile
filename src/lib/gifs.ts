@@ -19,6 +19,7 @@ const LOCAL_GIFS: Partial<Record<GifSlot, number>> = {
   welcome: require('../../assets/gifs/welcome.gif'),
   notWelcome: require('../../assets/gifs/notWelcome.gif'),
   offline: require('../../assets/gifs/offline.gif'),
+  banner: require('../../assets/gifs/banner.gif'),
   homeLeft: require('../../assets/gifs/homeLeft.gif'),
   homeMain: require('../../assets/gifs/homeMain.gif'),
   sending: require('../../assets/gifs/sending.gif'),

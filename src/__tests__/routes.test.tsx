@@ -83,8 +83,13 @@ describe('other screens', () => {
     expect(screen.getByText(strings.serverFiles.title)).toBeTruthy();
   });
 
+  test('/upload renders its window title', async () => {
+    await openAt('/upload');
+    expect(screen).toHavePathname('/upload');
+    expect(screen.getByText(strings.upload.title)).toBeTruthy();
+  });
+
   test.each([
-    ['/upload', strings.upload.title],
     ['/share', strings.share.title],
     ['/properties', strings.properties.title],
   ])('%s renders its title', async (path, title) => {

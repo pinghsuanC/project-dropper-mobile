@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
+import { StyleSheet } from 'react-native';
+
 import { strings } from '@/constants/strings';
+import { tones } from '@/theme';
 
 import { ConfirmWindow } from './ConfirmWindow';
 
@@ -52,4 +55,23 @@ test("can't be closed: every title-bar button is disabled", async () => {
   for (const name of [minimize, maximize, close]) {
     expect(screen.getByRole('button', { name }).props.accessibilityState).toMatchObject({ disabled: true });
   }
+});
+
+test('a note shows under the prompt, muted', async () => {
+  await render(
+    <ConfirmWindow
+      title="Back"
+      prompt="Back to home screen?"
+      note="Failed items will be removed."
+      primary={{ label: 'Confirm', onPress: jest.fn() }}
+      secondary={{ label: 'Cancel', onPress: jest.fn(), disabled: true }}
+    />,
+  );
+  const note = screen.getByText('Failed items will be removed.');
+  expect(StyleSheet.flatten(note.props.style).color).toBe(tones.muted);
+});
+
+test('no note unless given', async () => {
+  await renderUpload();
+  expect(screen.queryByText('Failed items will be removed.')).toBeNull();
 });

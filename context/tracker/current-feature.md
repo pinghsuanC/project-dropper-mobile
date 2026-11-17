@@ -2,8 +2,8 @@
 
 ## Scope
 
-- Feature:
-- Feature branch:
+- Feature: Upload page: pick files on the phone and send them to the paired PC
+- Feature branch: feature-branch-upload
 - Parts: [current-feature-parts.md](current-feature-parts.md)
 
 ## Current part
@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-17: Upload page UI: pick files into a queue, remove, clear and search them, turn away files over 100 MB when picked, a status bar with the connection, and the sending, failed and result looks from the testing menu; Upload stays off until sending is built
 - 2026-11-17: Pairing step 1: scan the PC's QR code with the camera, with a camera-access note first and an error when access is denied; the scanned text is printed for now
 - 2026-11-17: Server status rows show each file's type, an "Uploaded" date and its status, with nothing in red
 - 2026-11-17: Server files: the files this phone sent that the PC hasn't downloaded yet, from the server, with search, Retry, empty and Incomplete rows, and Back to Home
