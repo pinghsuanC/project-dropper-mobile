@@ -14,6 +14,7 @@ export type RegisterState = (typeof RegisterState)[keyof typeof RegisterState];
 export const HomeState = {
   UNPAIRED: 'unpaired',
   PAIRED: 'paired',
+  CHECKING: 'checking',
   SERVER_ERROR: 'serverError',
 } as const;
 export type HomeState = (typeof HomeState)[keyof typeof HomeState];

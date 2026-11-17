@@ -35,6 +35,21 @@ test('bold uses the bold face of the message font', async () => {
   expect(style.fontFamily).toBe(fonts.messageBold);
 });
 
+test('italic uses the italic face of the message font (a real font file, not a faked slant)', async () => {
+  const { style } = await styleOf(<Text italic>hello</Text>);
+  expect(style.fontFamily).toBe(fonts.messageItalic);
+  expect(style.fontStyle).toBeUndefined();
+});
+
+test('italic does nothing on Silkscreen roles (it has no italic)', async () => {
+  const { style } = await styleOf(
+    <Text variant="title" italic>
+      hello
+    </Text>,
+  );
+  expect(style.fontFamily).toBe(fonts.chrome);
+});
+
 test('the disabled tone has the engraved white shadow', async () => {
   const { style } = await styleOf(<Text tone="disabled">hello</Text>);
   expect(style.textShadowColor).toBe(colors.disabledShadow);

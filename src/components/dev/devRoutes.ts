@@ -39,6 +39,7 @@ export const DEV_ROUTES: DevSection[] = [
     entries: [
       { label: entries.homeUnpaired, href: { pathname: '/home', params: { state: HomeState.UNPAIRED } } },
       { label: entries.homePaired, href: { pathname: '/home', params: { state: HomeState.PAIRED } } },
+      { label: entries.homeChecking, href: { pathname: '/home', params: { state: HomeState.CHECKING } } },
       { label: entries.homeServerError, href: { pathname: '/home', params: { state: HomeState.SERVER_ERROR } } },
     ],
   },

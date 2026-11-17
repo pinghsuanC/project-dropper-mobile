@@ -7,6 +7,8 @@ import { getSession } from '@/state/session';
 
 // Landing runs start-up on mount; keep it pending so these route tests never call the server.
 jest.mock('@/lib/startup', () => ({ runStartup: jest.fn(() => new Promise(() => {})) }));
+// Home's connection check calls the server; its results are tested in home.test.tsx.
+jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn(async () => 'unpaired') }));
 
 const APP_DIR = './src/app';
 
@@ -23,7 +25,8 @@ async function pressLink(name: string) {
   await fireEvent.press(screen.getByRole('link', { name }));
 }
 
-const propertiesLink = () => screen.queryByRole('link', { name: strings.taskbar.properties });
+// The Taskbar's Properties is a button (1060), not a link.
+const propertiesButton = () => screen.queryByRole('button', { name: strings.taskbar.properties });
 
 describe('Landing', () => {
   test('the app opens on Landing: the DROPPER.EXE terminal', async () => {
@@ -47,28 +50,13 @@ describe('Register', () => {
 });
 
 describe('Home', () => {
-  test('shows the unpaired line when no PC is paired', async () => {
+  test('opens Home, not connected when the check finds no PC', async () => {
     await openAt('/home');
-    expect(screen.getByRole('header', { name: strings.home.title })).toBeTruthy();
-    expect(screen.getByText(strings.home.unpaired)).toBeTruthy();
+    expect(screen).toHavePathname('/home');
+    expect(screen.getByText(strings.home.titleUnpaired)).toBeTruthy();
   });
 
-  test('shows the paired line from the session', async () => {
-    getSession().setPairedWith({ pcName: 'DESKTOP-01' });
-    await openAt('/home');
-    expect(screen.getByText(strings.home.paired('DESKTOP-01'))).toBeTruthy();
-    expect(screen.queryByText(strings.home.unpaired)).toBeNull();
-  });
-
-  test.each([
-    [strings.home.toPairing, '/pairing/scan'],
-    [strings.home.toServerFiles, '/server-files'],
-    [strings.home.toUpload, '/upload'],
-  ])('"%s" goes to %s', async (label, path) => {
-    await openAt('/home');
-    await pressLink(label);
-    expect(screen).toHavePathname(path);
-  });
+  // Its looks, balloon and buttons are in home.test.tsx.
 });
 
 describe('Pairing', () => {
@@ -99,12 +87,12 @@ describe('other screens', () => {
 describe('taskbar', () => {
   test.each(['/home', '/server-files', '/upload'])('%s shows the Properties button', async (path) => {
     await openAt(path);
-    expect(propertiesLink()).toBeTruthy();
+    expect(propertiesButton()).toBeTruthy();
   });
 
   test('the Properties button goes to /properties', async () => {
     await openAt('/home');
-    await pressLink(strings.taskbar.properties);
+    await fireEvent.press(propertiesButton()!);
     expect(screen).toHavePathname('/properties');
   });
 
@@ -113,7 +101,7 @@ describe('taskbar', () => {
     async (path) => {
       await openAt(path);
       expect(screen).toHavePathname(path);
-      expect(propertiesLink()).toBeNull();
+      expect(propertiesButton()).toBeNull();
     },
   );
 });
@@ -121,7 +109,7 @@ describe('taskbar', () => {
 describe('back', () => {
   test('returns to the previous screen', async () => {
     await openAt('/home');
-    await pressLink(strings.taskbar.properties);
+    await fireEvent.press(propertiesButton()!);
     expect(screen).toHavePathname('/properties');
     await testRouter.back('/home');
   });

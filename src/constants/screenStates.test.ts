@@ -30,7 +30,7 @@ test.each(Object.entries(LISTS))('%s values are camelCase and unique', (_name, s
 
 test('each screen has the states the prototype shows', () => {
   expect(Object.values(RegisterState)).toEqual(['unreachable', 'serverError']);
-  expect(Object.values(HomeState)).toEqual(['unpaired', 'paired', 'serverError']);
+  expect(Object.values(HomeState)).toEqual(['unpaired', 'paired', 'checking', 'serverError']);
   expect(Object.values(PairingScanState)).toEqual(['cameraNote', 'camera', 'error']);
   expect(Object.values(PairingWaitState)).toEqual(['error']);
   expect(Object.values(ServerFilesState)).toEqual(['empty', 'files']);

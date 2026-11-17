@@ -85,11 +85,15 @@ response, error codes and status (✅ built · 🚧 planned). Check it before an
 calls the server, and to see which routes exist yet. When it and the table below
 disagree, `API.md` wins; when `API.md` and the server's `/docs` page disagree, `/docs` wins.
 
+**`A:/Coding/file-dropper` is read-only.** Read `API.md` and the server and desktop code
+there, but never edit, create or delete files in it, or run git commands that change it.
+If the contract needs to change, tell me instead.
+
 All responses use the envelope `{ "message": string, "data": ... }`. Errors are `{ "detail": ... }`;
 a 422 is a list (`{ "detail": [{ "loc", "msg", "type" }] }`). Protected routes need
 `Authorization: Bearer <session_token>`; never send it to R2 (`upload_url`).
 
-Built routes the phone uses (from `API.md`, 2026-11-13). Every route can also return 422.
+Built routes the phone uses (from `API.md`, 2026-11-16). Every route can also return 422.
 Protected routes can also return 401 (no or expired session) and 403 (device revoked).
 
 | Route | Auth | Body | Returns `data` | Errors |
@@ -99,12 +103,13 @@ Protected routes can also return 401 (no or expired session) and 403 (device rev
 | `POST /auth/challenge` | — | `device_id` | `{ challenge }` | 404 unknown device (clear the device, go to Register) · 403 revoked |
 | `POST /auth/verify-challenge` | — | `device_id, challenge, signature` | `{ token }` | 401 any failure · 403 revoked |
 | `GET /auth/me` | ✓ | — | `{ device_id, name, platform }` | |
+| `GET /devices/paired` | ✓ | — | `{ device: { device_id, name, platform, paired_at } \| null }` (null = not paired, still 200) | |
 | `POST /files/prepare-upload` → 201 | ✓ | `file_name, size, content_type, checksum, receiver_id` | `{ file_id, upload_url }` | 404 receiver unknown / revoked |
 | `POST /files/finish-upload` | ✓ | `file_id` | `{ file_id }` | 404 not found / not yours · 409 not `pending`, or upload missing / wrong size |
 | `POST /files/prepare-batch-upload` → 201 | ✓ | `receiver_id, files: [{ client_ref, file_name, size, content_type, checksum }]` | `{ files: [{ client_ref, file_id, upload_url }] }` | 404 receiver unknown / revoked |
 | `POST /files/finish-batch-upload` | ✓ | `file_ids` | `{ file_ids }` | 404 some ids not found / not yours / not `pending` · 409 an upload missing / wrong size (none marked) |
 
-Not built yet (🚧 in `API.md`): pairing (`/pair/*`, `GET /devices/paired`),
+Not built yet (🚧 in `API.md`): pairing (`/pair/*`),
 `POST /auth/unregister`, `GET /files/sent`, `POST /files/cancel`, `welcome_gif` in
 `/auth/me`, and a pairing code on register (M7). No GIF or quote routes.
 

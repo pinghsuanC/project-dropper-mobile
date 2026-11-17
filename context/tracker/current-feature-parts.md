@@ -10,4 +10,3 @@ the notes worked out so far (source, goal, requirements, open questions). `load`
 the first one into ## Details of current-feature.md. -->
 
 ## Done
-
