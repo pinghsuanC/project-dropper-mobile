@@ -2,8 +2,8 @@
 
 ## Scope
 
-- Feature: Home screen after registering: greeting and quote, connection window, upload question, taskbar, and the links to Pairing, Server files, Upload and Properties
-- Feature branch: feature-branch-home
+- Feature:
+- Feature branch:
 - Parts: [current-feature-parts.md](current-feature-parts.md)
 
 ## Current part
@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-17: Home screen: greeting and quote of the day, a connection check against the server and the paired PC with its four looks and Retry, the Upload question and the taskbar
 - 2026-11-16: Home checks the server and the paired PC when it opens, with Checking…, Retry, a live greeting and date, and a quote of the day
 - 2026-11-16: Home screen UI: greeting balloon, GIFs, the not-connected, connected and can't-reach looks with their buttons, the Upload question and the taskbar
 - 2026-11-16: Register screen: name the phone, make its key, register it with the server, save it and log in, with error dialogs; a phone the server has forgotten goes back to Register

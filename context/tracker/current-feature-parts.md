@@ -10,6 +10,3 @@ the notes worked out so far (source, goal, requirements, open questions). `load`
 the first one into ## Details of current-feature.md. -->
 
 ## Done
-
-- 2026-11-16: Part 2: Home behaviour and calls
-- 2026-11-16: Part 1: Home UI and redirection
