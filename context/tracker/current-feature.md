@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-17: Server status rows show each file's type, an "Uploaded" date and its status, with nothing in red
 - 2026-11-17: Server files: the files this phone sent that the PC hasn't downloaded yet, from the server, with search, Retry, empty and Incomplete rows, and Back to Home
 - 2026-11-17: Home screen: greeting and quote of the day, a connection check against the server and the paired PC with its four looks and Retry, the Upload question and the taskbar
 - 2026-11-16: Home checks the server and the paired PC when it opens, with Checking…, Retry, a live greeting and date, and a quote of the day
@@ -48,6 +49,7 @@ Grouped by the app's sections (the same ones as the prototype's dev menu).
 ## Server
 - Storage size limit (keep the total below 30 GB)
 - Storage free tier checking (stop working if the current month's quota has been met)
+- Live file statuses on Server status: refresh the list while the screen is open, so a status change (e.g. the PC downloading a file) shows without reopening it
 
 ## Upload
 - Rename files on the phone

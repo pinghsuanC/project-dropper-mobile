@@ -1,6 +1,6 @@
 // File sizes, times and names in file lists (2010 FileList), as the prototype shows them.
 import { FILE_NAME_MAX } from '@/constants/config';
-import { formatSize, formatWhen, trimName } from '@/lib/format';
+import { fileType, formatSize, formatWhen, trimName } from '@/lib/format';
 
 const KB = 1024;
 const MB = 1024 ** 2;
@@ -69,5 +69,19 @@ describe('trimName', () => {
     expect(trimName(short)).toBe(short);
     const long = '😀'.repeat(FILE_NAME_MAX) + '.jpg';
     expect(trimName(long)).toBe('😀'.repeat(FILE_NAME_MAX) + '…');
+  });
+});
+
+describe('fileType', () => {
+  test("the extension after the last dot, in capitals", () => {
+    expect(fileType('holiday-photo.jpg')).toBe('JPG');
+    expect(fileType('backup.tar.gz')).toBe('GZ');
+    expect(fileType('Report.Pdf')).toBe('PDF');
+  });
+
+  test('none without an extension: no dot, a leading dot only, or a trailing dot', () => {
+    expect(fileType('Makefile')).toBeUndefined();
+    expect(fileType('.gitignore')).toBeUndefined();
+    expect(fileType('notes.')).toBeUndefined();
   });
 });

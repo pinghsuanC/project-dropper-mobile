@@ -9,7 +9,6 @@ import { getSentFiles } from '@/api/files';
 import type { SentFile } from '@/api/types';
 import { mockSentFiles } from '@/components/dev/mockSentFiles';
 import { Button, FileList, Gif, Icon, TextField, Window, type FileRow } from '@/components/ui';
-import { FileStatus } from '@/constants/enums';
 import { ServerFilesState } from '@/constants/screenStates';
 import { strings } from '@/constants/strings';
 import { useScreenState } from '@/lib/screenState';
@@ -25,7 +24,7 @@ const toRow = (file: SentFile): FileRow => ({
   name: file.file_name,
   size: file.size,
   createdAt: file.created_at,
-  incomplete: file.status === FileStatus.PENDING,
+  status: strings.format.fileStatus[file.status],
 });
 
 const goHome = () => router.dismissTo('/home');

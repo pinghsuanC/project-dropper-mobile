@@ -1,4 +1,5 @@
 // All user-facing text, grouped by screen. Text with values in it is a function.
+import type { FileStatus } from './enums';
 
 export const strings = {
   /** Text inside the shared UI components (src/components/ui/). */
@@ -105,12 +106,21 @@ export const strings = {
     size: { B: (n: string) => `${n} B`, KB: (n: string) => `${n} KB`, MB: (n: string) => `${n} MB`, GB: (n: string) => `${n} GB` },
     today: (time: string) => `Today ${time}`,
     yesterday: 'Yesterday',
-    /** A file row's second line. */
-    sizeAndWhen: (size: string, when: string) => `${size} · ${when}`,
+    /**
+     * A file row's second line: "2.3 MB · JPG · Uploaded Today 4:12 PM · Pending". `when` is the
+     * upload time (formatWhen); `type` and `status` are left out when missing.
+     */
+    fileDetail: ({ size, type, when, status }: { size: string; type?: string; when: string; status?: string }) =>
+      [size, type, `Uploaded ${when}`, status].filter(Boolean).join(' · '),
     /** What a screen reader says for a file row: the full name, then its second line. */
     rowLabel: (name: string, detail: string) => `${name}, ${detail}`,
-    /** A `pending` file: its upload started but was never confirmed. */
-    incomplete: 'Incomplete',
+    /** A file's server status (constants/enums.ts FileStatus), as shown in file lists. */
+    fileStatus: {
+      pending: 'Pending',
+      uploaded: 'Uploaded',
+      downloaded: 'Downloaded',
+      deleted: 'Deleted',
+    } satisfies Record<FileStatus, string>,
   },
   upload: {
     title: 'Upload',
