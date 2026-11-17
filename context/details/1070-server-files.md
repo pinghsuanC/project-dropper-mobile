@@ -13,7 +13,7 @@ Components are in [2010](2010-components.md); the GIF slot in [2040](2040-gifs.m
 2. **Window** "Server status": its ✕ goes to Home.
    - **Search field**: TextField with the `search` icon, placeholder "Search files", no
      visible label (`labelHidden`; screen readers still hear "Search files").
-   - **FileList** (fixed height, scrolls inside): name over "size · when".
+   - **FileList** (fixed height, scrolls inside): name over "size · type · Uploaded when · status".
    - **Buttons**: Back (always), Retry (only after a failed load).
 3. **Taskbar** from the `(taskbar)` layout.
 
@@ -38,13 +38,20 @@ server takes the sender from the session: the request names no device. It return
 
 - **Name** cut to `FILE_NAME_MAX` (20) characters + "…" (`trimName`, counts characters, not
   UTF-16 units). The row's accessibility label has the full name and the detail line.
-- **Detail**: `formatSize` ("845 KB", "2.3 MB": one decimal, no trailing ".0") · `formatWhen`
+- **Detail** (`strings.format.fileDetail`): `formatSize` · type · "Uploaded" + `formatWhen`
+  of `created_at` (when the upload was prepared) · status. The **type** is the name's
+  extension in capitals (`fileType`: "JPG"; "GZ" for `.tar.gz`), left out when the name has
+  none (`Makefile`, `.gitignore`); `/files/sent` has no content type, so the name is the
+  only source. Sizes: "845 KB", "2.3 MB" (one decimal, no trailing ".0"). Times:
   ("Today 4:12 PM", "Yesterday", "Nov 10", or "Nov 10, 2025" in an earlier year; local
   calendar days, `DATE_LOCALE`). The times re-read the clock (`useNow`), so "Today" turns
   into "Yesterday" at midnight while the screen is open.
-- **`pending`** (the upload started but was never confirmed): "size · Incomplete" in the
-  error tone instead of the date (decided 2026-11-17; the prototype has no such row).
-  Retrying or cancelling it waits for `POST /files/cancel` (🚧).
+- **Status**: every row ends with the file's server status, first letter capitalized
+  (`strings.format.fileStatus`): "2.3 MB · JPG · Uploaded Today 4:12 PM · Pending". Every status
+  uses the same muted tone, nothing is shown as an error (decided 2026-11-17, replacing an
+  earlier red "Incomplete" in place of the date; the prototype has no status). The list
+  loads once, so a status that changes while the screen is open shows on the next visit
+  (live updates are a future feature).
 
 ## Search
 

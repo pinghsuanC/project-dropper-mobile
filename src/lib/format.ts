@@ -1,4 +1,4 @@
-// File sizes, times and names in file lists (2010 FileList), as the prototype's `fmtSize`
+// File sizes, types, times and names in file lists (2010 FileList), as the prototype's `fmtSize`
 // and `trimName` show them. Pure functions: callers pass `now`, so tests decide the time.
 import { DATE_LOCALE, FILE_NAME_MAX } from '@/constants/config';
 import { strings } from '@/constants/strings';
@@ -30,6 +30,14 @@ export function formatWhen(unixSeconds: number, now: Date): string {
   if (daysAgo === 1) return strings.format.yesterday;
   const sameYear = then.getFullYear() === now.getFullYear();
   return then.toLocaleDateString(DATE_LOCALE, { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
+}
+
+/** "JPG" for "photo.jpg": the extension after the last dot, in capitals; none without one. */
+export function fileType(name: string): string | undefined {
+  const dot = name.lastIndexOf('.');
+  // No dot, a leading dot only (".gitignore") or a trailing dot: no extension.
+  if (dot <= 0 || dot === name.length - 1) return undefined;
+  return name.slice(dot + 1).toUpperCase();
 }
 
 /** Names over FILE_NAME_MAX characters are cut and end in "…". Counts characters, not UTF-16 units. */

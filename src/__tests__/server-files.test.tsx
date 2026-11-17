@@ -101,10 +101,10 @@ describe('loading the list', () => {
     ]);
   });
 
-  test('each row: size and when, and "Incomplete" for a pending upload', async () => {
+  test('each row: size, type, "Uploaded" + when, and the file status', async () => {
     await open();
-    expect(screen.getByText(strings.format.sizeAndWhen('2.3 MB', 'Today 4:12 PM'))).toBeTruthy();
-    expect(screen.getByText(strings.format.sizeAndWhen('2.1 KB', strings.format.incomplete))).toBeTruthy();
+    expect(screen.getByText('2.3 MB · JPG · Uploaded Today 4:12 PM · Uploaded')).toBeTruthy();
+    expect(screen.getByText('2.1 KB · TXT · Uploaded Yesterday · Pending')).toBeTruthy();
   });
 
   test('no files: "No files on server"', async () => {

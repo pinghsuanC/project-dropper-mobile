@@ -140,9 +140,10 @@ Props added while building, beyond the tables above:
   row stays its own screen-reader stop. `emptyText` also carries "Loading…" and error lines.
   `selectedId` / `onSelect` from the table above come when something needs selection.
 - **FileList** (patterns), server variant: `files: FileRow[]` (`{ id, name, size, createdAt,
-  incomplete? }`, its own shape: screens map server types to it), `emptyText`, `now`. Row:
-  name (`trimName`) over a caption "size · when" (muted), or "size · Incomplete" (error
-  tone). Each row is one accessible stop labelled with the full name and the detail.
+  status? }`, its own shape: screens map server types to it; `status` is text from
+  `strings.ts`), `emptyText`, `now`. Row: name (`trimName`) over a muted caption "size ·
+  type · Uploaded when · status" (`strings.format.fileDetail`; type from the name's
+  extension via `fileType`; type and status left out when missing). Each row is one accessible stop labelled with the full name and the detail.
   Upload's variants (✕, Sent ✓, %, Waiting, Failed, Too large) come with Upload.
 - **TextField**: `icon?` (drawn inside the field, before the text) and `labelHidden?` (no
   visible label; `label` is still the accessibility label), for search fields.
