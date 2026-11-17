@@ -72,6 +72,8 @@ export const strings = {
     connect: 'I want to connect to my PC',
     viewServerFiles: 'View server files',
     retry: 'Retry',
+    /** The big button and the status line while Home checks its connection. */
+    checking: 'Checking…',
     serverConnected: 'Server connected',
     serverError: 'Server error, please check your server and retry.',
     uploadTitle: 'Upload',
@@ -128,6 +130,7 @@ export const strings = {
       registerServerError: 'Error - server error',
       homeUnpaired: 'Unpaired',
       homePaired: 'Paired',
+      homeChecking: 'Paired - checking',
       homeServerError: 'Paired - server error',
       pairingScan: 'Step 1 - scan',
       pairingWait: 'Step 2 - wait',

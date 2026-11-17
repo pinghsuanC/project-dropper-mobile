@@ -27,6 +27,7 @@ export const API_PATHS = {
   challenge: '/auth/challenge',
   verifyChallenge: '/auth/verify-challenge',
   me: '/auth/me',
+  pairedDevice: '/devices/paired',
 } as const;
 
 /** The `platform` this app registers as. */
@@ -46,6 +47,9 @@ export const REGISTERED_REDIRECT_MS = 700;
 
 /** Locale for dates shown in the app (Home's date line). Text itself is in strings.ts. */
 export const DATE_LOCALE = 'en-US';
+
+/** How often Home re-reads the clock, so its greeting, date and quote stay current. */
+export const CLOCK_TICK_MS = 60_000;
 
 /** expo-secure-store keys. Allowed characters: letters, digits, `.`, `-`, `_`. */
 export const STORAGE_KEYS = {

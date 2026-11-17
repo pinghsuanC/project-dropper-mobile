@@ -8,6 +8,8 @@ import { getSession } from '@/state/session';
 
 // Landing runs start-up on mount; keep it pending so these tests never call the server.
 jest.mock('@/lib/startup', () => ({ runStartup: jest.fn(() => new Promise(() => {})) }));
+// Home's connection check calls the server; its results are tested in home.test.tsx.
+jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn(async () => 'unpaired') }));
 
 // SHOW_TESTING_MENU is fixed when config.ts loads (and Jest has no APP_ENV, so it's prod);
 // a getter added by defineProperty lets each test pick it.
@@ -60,7 +62,7 @@ test('prod builds ignore the state', async () => {
   expect(screen.queryByText(strings.dev.stateLine('tooLarge'))).toBeNull();
 });
 
-test('prod builds ignore Home states: the look follows the session', async () => {
+test('prod builds ignore Home states: the look follows the check', async () => {
   mockShowMenu = false;
   await openAt('/home?state=paired');
   expect(screen.getByText(strings.home.titleUnpaired)).toBeTruthy();
