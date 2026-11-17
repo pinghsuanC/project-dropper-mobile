@@ -41,10 +41,18 @@ Laid out like Server status ([1070](1070-server-files.md)), and shares its name 
 Pure rules here; the queue itself lives in the session store (`uploadQueue`, 1030), so it
 outlives the screen. Not kept across app restarts.
 
-- **Add…** opens `expo-document-picker` (`multiple: true`, `copyToCacheDirectory: true`).
+- **Add…** opens `expo-document-picker` (`multiple: true`, `copyToCacheDirectory: false`).
   Cancel changes nothing; a picker failure shows "Couldn't open your files…".
-- Picked files join the **end** of the queue in pick order, status `queued`. The cache
-  copy's `uri` is the id.
+- **No cache copy (2026-11-17, found on the phone):** in Expo Go, expo-file-system only reads
+  inside the running project's own folders, and the picker's cache copy lands outside them:
+  `File.digest` failed with "Missing 'READ' permission for accessing the file", so every
+  send ended "0 of N sent". The picker's own `content://` link isn't checked that way
+  (another app's provider) and `File` reads it through the content resolver: `digest`
+  streams it and `upload` sends it with its real size. Nothing is copied, so there are no
+  cache copies to clean up. The link stays readable while the app runs (the queue isn't
+  kept across restarts anyway).
+- Picked files join the **end** of the queue in pick order, status `queued`. The picker's
+  `uri` is the id; the same document picked again is skipped as the same name and size.
 - **Size limit:** `MAX_UPLOAD_BYTES` in `config.ts`, 100 MB counted in 1024s (as sizes are
   shown). The server has no limit. A file **over** it is never added; exactly 100 MB is.
   The rest of the same pick is added.
@@ -142,5 +150,4 @@ Upload stays disabled.
 
 ## Not done
 
-Logging in again after a 401; cancelling a send; parallel PUTs; chunking (Future Features);
-deleting the picker's cache copies (Android clears its cache).
+Logging in again after a 401; cancelling a send; parallel PUTs; chunking (Future Features).
