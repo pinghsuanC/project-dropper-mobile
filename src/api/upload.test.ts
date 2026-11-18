@@ -45,6 +45,18 @@ test('reports progress as 0–1', async () => {
   expect(progress.mock.calls).toEqual([[0.25], [1]]);
 });
 
+// Seen on the phone (2026-11-18): 0% → 12% → 1% → up again. The native side counts the bytes
+// written on each attempt at the request body, so a retried connection starts again from 0.
+test('progress never goes backwards: a lower report is skipped', async () => {
+  fs.mockUpload.mockImplementationOnce(async (_uri, _url, options) => {
+    for (const bytesSent of [0, 12, 1, 5, 20, 100]) options?.onProgress?.({ bytesSent, totalBytes: 100 });
+    return { status: 200, body: '', headers: {} };
+  });
+  const progress = jest.fn();
+  await putFile(URI, URL, progress);
+  expect(progress.mock.calls).toEqual([[0], [0.12], [0.2], [1]]);
+});
+
 test('progress with an unknown total reads 0, never NaN', async () => {
   fs.mockUpload.mockImplementationOnce(async (_uri, _url, options) => {
     options?.onProgress?.({ bytesSent: 10, totalBytes: 0 });

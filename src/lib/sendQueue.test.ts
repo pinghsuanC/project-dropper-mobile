@@ -15,6 +15,13 @@ import { getSession } from '@/state/session';
 jest.mock('@/api/files', () => ({ prepareBatchUpload: jest.fn(), finishBatchUpload: jest.fn() }));
 jest.mock('@/api/upload', () => ({ ...jest.requireActual('@/api/upload'), putFile: jest.fn() }));
 jest.mock('@/lib/crypto', () => ({ fileChecksum: jest.fn() }));
+// "Preparing…" is held for MIN_PREPARING_MS; 0 here, except where a test holds it.
+let mockMinPreparing = 0;
+jest.mock('@/constants/config', () =>
+  Object.defineProperty({ ...jest.requireActual('@/constants/config') }, 'MIN_PREPARING_MS', {
+    get: () => mockMinPreparing,
+  }),
+);
 
 const prepareMock = jest.mocked(prepareBatchUpload);
 const finishMock = jest.mocked(finishBatchUpload);
@@ -54,6 +61,7 @@ const count = () => {
 
 beforeEach(() => {
   jest.resetAllMocks();
+  mockMinPreparing = 0;
   session().reset();
   session().setPairedWith({ pcName: 'PC', deviceId: PC });
   session().setUploadQueue([A, B, C]);
@@ -468,5 +476,48 @@ describe('when there is nothing to do', () => {
     session().setUploadQueue([file('x.txt', 1)]);
     await sendQueue();
     expect(new Set(runs).size).toBe(2);
+  });
+});
+
+describe('"Preparing…" is held for MIN_PREPARING_MS', () => {
+  const HOLD = 600;
+  beforeEach(() => {
+    mockMinPreparing = HOLD;
+    jest.useFakeTimers();
+  });
+  afterEach(() => jest.useRealTimers());
+
+  test('even when checksums and prepare answer at once, the first file waits for it', async () => {
+    const send = sendQueue();
+    await jest.advanceTimersByTimeAsync(HOLD - 1);
+    expect(count()).toEqual({ current: 0, total: 3 });
+    expect(putMock).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(1);
+    expect(putMock).toHaveBeenCalled();
+    await send;
+    expect(session().uploadOutcome).toEqual({ kind: 'sent', count: 3 });
+  });
+
+  test('a prepare that fails still fails every file, after the wait', async () => {
+    prepareMock.mockRejectedValue(new UnreachableError());
+    const send = sendQueue();
+    await jest.advanceTimersByTimeAsync(HOLD - 1);
+    expect(session().uploadOutcome).toBeNull();
+    expect(count()).toEqual({ current: 0, total: 3 });
+    await jest.advanceTimersByTimeAsync(1);
+    await send;
+    expect(session().uploadOutcome).toEqual({ kind: 'partial', sent: 0, total: 3 });
+    expect(queue().map((f) => f.status)).toEqual(['failed', 'failed', 'failed']);
+  });
+
+  test('a reset during the wait: nothing is sent and nothing written back', async () => {
+    const send = sendQueue();
+    await jest.advanceTimersByTimeAsync(HOLD / 2);
+    session().reset();
+    await jest.advanceTimersByTimeAsync(HOLD);
+    await send;
+    expect(putMock).not.toHaveBeenCalled();
+    expect(session().uploadQueue).toEqual([]);
+    expect(session().uploadOutcome).toBeNull();
   });
 });

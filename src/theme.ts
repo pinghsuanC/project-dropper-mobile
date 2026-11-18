@@ -157,8 +157,11 @@ export const sizes = {
   progressBar: { blocks: 20, run: 5, gap: 2, height: { default: 22, mini: 12 } },
   /** StatusBar (2010): the "connected" dot's diameter. */
   statusDot: 7,
-  /** FileList upload rows (2010): the mini progress bar's width beside the percent. */
-  uploadRowBar: 40,
+  /**
+   * FileList upload rows (2010): the percent's fixed width, so the size beside it doesn't move
+   * as the number grows. Fits "100%" in body text at the largest font scale (1.5×).
+   */
+  uploadRowPercent: 48,
   /** Pairing camera (1080): the corner brackets' arm length, stroke and inset from the edge. */
   qrBracket: { length: 28, stroke: 4, inset: '18%' },
   /** Testing menu (src/components/dev/): menu button height, so a row's two buttons match. */

@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { strings } from '@/constants/strings';
-import { tones } from '@/theme';
+import { sizes, tones } from '@/theme';
 
 import { FileList, type FileRow, type UploadRow } from './FileList';
 
@@ -81,10 +81,31 @@ describe('upload variant', () => {
     expect(screen.getAllByRole('button')).toHaveLength(1);
   });
 
-  it('the row being sent shows its percent and a mini bar with that value', async () => {
+  it('the row being sent shows its percent, with no mini bar', async () => {
     await showUpload();
     expect(screen.getByText(u.percent(45))).toBeTruthy();
-    expect(screen.getByRole('progressbar').props.accessibilityValue).toMatchObject({ now: 45 });
+    expect(screen.queryByRole('progressbar')).toBeNull();
+  });
+
+  // A fixed, right-aligned box: the size beside it doesn't move as 9% becomes 10% and 100%.
+  it('the percent sits in a fixed-width box, right-aligned', async () => {
+    await showUpload();
+    const box = StyleSheet.flatten(screen.getByTestId('upload-row-percent').props.style);
+    expect(box.width).toBe(sizes.uploadRowPercent);
+    expect(StyleSheet.flatten(screen.getByText(u.percent(45)).props.style).textAlign).toBe('right');
+  });
+
+  // Rounded down: 100% only once every byte is written, not at 99.5%.
+  it('the percent is rounded down', async () => {
+    await render(
+      <FileList
+        variant="upload"
+        files={[{ id: 'x', name: 'big.mp4', size: 1, status: 'sending', progress: 0.996 }]}
+        onRemove={() => {}}
+        emptyText=""
+      />,
+    );
+    expect(screen.getByText(u.percent(99))).toBeTruthy();
   });
 
   it('a waiting row says Waiting, muted', async () => {

@@ -15,9 +15,9 @@ Thousands are areas, each with a short head file that lists its files. Files go 
 | 1040 | [Server enums](1040-enums.md) | `enums.ts`: server `StrEnum`s as `as const` objects + union types |
 | 1050 | [Register](1050-register.md) | Register form, name rule, register → save → log-in flow, error dialogs |
 | 1060 | [Home](1060-home.md) | Home's four looks, the connection check (`/auth/me`, `/devices/paired`), live greeting and quote of the day, buttons, taskbar |
-| 1070 | [Server files](1070-server-files.md) | "Server status": files sent and not downloaded yet (`/files/sent`), search, loading / failure / empty, rows with size, type, "Uploaded" date and status |
+| 1070 | [Server files](1070-server-files.md) | "Server status": files sent and not downloaded yet (`/files/sent`), search, loading / failure / empty, a status bar with the connection, rows with size, type, "Uploaded" date and status |
 | 1080 | [Pairing](1080-pairing.md) | Step 1: scan the PC's QR code, camera permission order (note → Android → error), the scan-once hook; step 2 to come |
-| 1090 | [Upload](1090-upload.md) | "Pending upload": the queue, picking files, the 100 MB limit, status bar, Back window, popups; sending through the session store, Failed files and Retry failed |
+| 1090 | [Upload](1090-upload.md) | "Pending upload": the queue, picking files, the 500 MB limit, status bar, Back window, popups; sending through the session store, Failed files and Retry failed |
 | **2000** | [UI](2000-ui.md) | Area head: the look, list of UI files |
 | 2010 | [UI components](2010-components.md) | Layers, folders, every component |
 | 2020 | [Typography](2020-typography.md) | Text roles, tones, fonts |

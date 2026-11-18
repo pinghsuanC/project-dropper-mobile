@@ -15,6 +15,12 @@ Components are in [2010](2010-components.md); the GIF slot in [2040](2040-gifs.m
      visible label (`labelHidden`; screen readers still hear "Search files").
    - **FileList** (fixed height, scrolls inside): name over "size · type · Uploaded when · status".
    - **Buttons**: Back (always), Retry (only after a failed load).
+   - **StatusBar** (added 2026-11-18, as on Upload, 1090): the connection ("Checking…",
+     then "Connected" with the green dot, "Not connected" or "Can't reach server") ·
+     "N files" (only once the list has loaded) · the time. The connection is Home's
+     `checkConnection()` through `lib/useConnection.ts`, the hook Upload uses too, with
+     "Checking…" held for `MIN_CHECKING_MS`. Retry checks the connection again along with
+     the list. A testing-menu state shows Connected without checking.
 3. **Taskbar** from the `(taskbar)` layout.
 
 Back and ✕ use `router.dismissTo('/home')`: back to the Home already in the stack, or a
