@@ -120,7 +120,9 @@ export default function Upload() {
 
   const add = async () => {
     try {
-      const result = await getDocumentAsync({ multiple: true, copyToCacheDirectory: true });
+      // The picker's own content:// links, not cache copies: in Expo Go, expo-file-system can't
+      // read the picker's cache copy ("Missing 'READ' permission"), but it reads these (1090).
+      const result = await getDocumentAsync({ multiple: true, copyToCacheDirectory: false });
       if (result.canceled) return;
       const added = addPicked(queue, result.assets);
       setQueue(added.queue);

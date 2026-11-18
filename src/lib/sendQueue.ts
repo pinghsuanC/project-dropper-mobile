@@ -100,7 +100,8 @@ export async function sendQueue(which: 'queued' | 'failed' = 'queued'): Promise<
         stillMine();
         for (const [fileId, serverId] of put) if (finished.has(serverId)) confirmed.add(fileId);
       }
-    } catch {
+    } catch (e){
+      console.log(e)
       // Anything else (checksum, prepare, finish, offline): nothing more is confirmed, unless
       // the send was replaced, which stillMine() passes on.
       stillMine();
