@@ -14,12 +14,14 @@ jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn(async () => 'unpa
 jest.mock('@/api/files', () => ({ getSentFiles: jest.fn(async () => []) }));
 
 // SHOW_TESTING_MENU is fixed when config.ts loads (and Jest has no APP_ENV, so it's prod);
-// a getter added by defineProperty lets each test pick it.
+// a getter added by defineProperty lets each test pick it. "Checking…" isn't held here
+// (MIN_CHECKING_MS 0): that wait is tested in home.test.tsx and upload.test.tsx.
 let mockShowMenu = true;
 jest.mock('@/constants/config', () =>
-  Object.defineProperty({ ...jest.requireActual('@/constants/config') }, 'SHOW_TESTING_MENU', {
-    get: () => mockShowMenu,
-  }),
+  Object.defineProperties(
+    { ...jest.requireActual('@/constants/config') },
+    { SHOW_TESTING_MENU: { get: () => mockShowMenu }, MIN_CHECKING_MS: { value: 0 } },
+  ),
 );
 
 const APP_DIR = './src/app';

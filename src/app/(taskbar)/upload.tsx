@@ -27,7 +27,6 @@ import {
 import { UploadState } from '@/constants/screenStates';
 import { strings } from '@/constants/strings';
 import { formatTime } from '@/lib/format';
-import { checkConnection, type ConnectionResult } from '@/lib/homeCheck';
 import { useScreenState } from '@/lib/screenState';
 import { sendQueue } from '@/lib/sendQueue';
 import {
@@ -40,20 +39,12 @@ import {
   type QueuedFile,
   type UploadPopup,
 } from '@/lib/uploadQueue';
+import { connectionSegment, useConnection } from '@/lib/useConnection';
 import { useNow } from '@/lib/useNow';
 import { getSession, useSession, type UploadSending } from '@/state/session';
 import { spacing } from '@/theme';
 
 const u = strings.upload;
-
-type Connection = 'checking' | ConnectionResult;
-
-const CONNECTION_TEXT: Record<Connection, string> = {
-  checking: u.checking,
-  paired: u.connected,
-  unpaired: u.notConnected,
-  serverError: u.serverError,
-};
 
 const goHome = () => router.dismissTo('/home');
 
@@ -71,24 +62,12 @@ export default function Upload() {
   // A pick problem or a look's popup first; otherwise how the last send ended.
   const [pickPopup, setPickPopup] = useState<UploadPopup | null>(first?.popup ?? null);
   const popup = pickPopup ?? (outcome && !first ? outcomePopup(outcome) : null);
-  const [connection, setConnection] = useState<Connection>(first ? 'paired' : 'checking');
+  // Home's check once when the screen opens, "Checking…" held a moment; a look skips it.
+  const { connection } = useConnection(!!first);
   const [query, setQuery] = useState('');
   const now = useNow();
 
-  // Check the server and the paired PC once when the screen opens, as Home does; a testing-menu
-  // look skips it. The result is dropped if the screen has closed meanwhile.
-  useEffect(() => {
-    if (testState) return;
-    let current = true;
-    void checkConnection().then((result) => {
-      if (current) setConnection(result);
-    });
-    return () => {
-      current = false;
-    };
-  }, [testState]);
-
-  // Leaving the screen (Confirm, ✕, the taskbar, Android Back) drops failed files; a running
+  // Leaving the screen (Yes, ✕, the taskbar, Android Back) drops failed files; a running
   // send's waiting and sending files stay (the Back note). A look never touches the store.
   useFocusEffect(
     useCallback(() => {
@@ -140,7 +119,7 @@ export default function Upload() {
   const rows = filterQueue(queue, query);
   const emptyText = queue.length === 0 ? u.empty : u.noMatch(query.trim());
   const status: StatusSegment[] = [
-    { text: CONNECTION_TEXT[connection], dot: connection === 'paired' },
+    connectionSegment(connection),
     { text: sendingText(sending) ?? u.fileCount(queue.length) },
     { text: formatTime(now) },
   ];
@@ -205,9 +184,9 @@ export default function Upload() {
           title={u.backTitle}
           prompt={u.backPrompt}
           note={u.backNote}
-          primary={{ label: u.confirm, onPress: goHome }}
-          // Cancel stays disabled, as in the prototype: the window can't be dismissed.
-          secondary={{ label: u.cancel, onPress: () => {}, disabled: true }}
+          primary={{ label: u.backYes, onPress: goHome }}
+          // No stays disabled, as on Home's Upload window: this window can't be dismissed.
+          secondary={{ label: u.backNo, onPress: () => {}, disabled: true }}
         />
       </ScrollView>
 

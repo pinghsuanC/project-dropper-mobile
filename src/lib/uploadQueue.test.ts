@@ -56,7 +56,7 @@ describe('addPicked', () => {
   });
 
   test('every too-large file is reported', () => {
-    const { tooLarge } = addPicked([], [picked('a.mov', 200 * MB), picked('b.mov', 300 * MB)]);
+    const { tooLarge } = addPicked([], [picked('a.mov', 600 * MB), picked('b.mov', 700 * MB)]);
     expect(tooLarge.map((f) => f.name)).toEqual(['a.mov', 'b.mov']);
   });
 
@@ -105,13 +105,13 @@ describe('pickProblem', () => {
   test('one too large: names it, with its size and the limit', () => {
     expect(pickProblem({ tooLarge: [picked('family-video.mov', 2.4 * 1024 * MB)], unknownSize: none })).toEqual({
       kind: 'error',
-      message: u.tooLargeOne('family-video.mov', '2.4 GB', '100 MB'),
+      message: u.tooLargeOne('family-video.mov', '2.4 GB', '500 MB'),
     });
   });
 
   test('several too large: counts them', () => {
-    const tooLarge = [picked('a.mov', 200 * MB), picked('b.mov', 300 * MB)];
-    expect(pickProblem({ tooLarge, unknownSize: none })?.message).toBe(u.tooLargeMany(2, '100 MB'));
+    const tooLarge = [picked('a.mov', 600 * MB), picked('b.mov', 700 * MB)];
+    expect(pickProblem({ tooLarge, unknownSize: none })?.message).toBe(u.tooLargeMany(2, '500 MB'));
   });
 
   test('one without a size: names it', () => {
@@ -126,8 +126,8 @@ describe('pickProblem', () => {
   });
 
   test('both kinds in one pick: too large wins', () => {
-    expect(pickProblem({ tooLarge: [picked('a.mov', 200 * MB)], unknownSize: [picked('b', undefined)] })?.message).toBe(
-      u.tooLargeOne('a.mov', '200 MB', '100 MB'),
+    expect(pickProblem({ tooLarge: [picked('a.mov', 600 * MB)], unknownSize: [picked('b', undefined)] })?.message).toBe(
+      u.tooLargeOne('a.mov', '600 MB', '500 MB'),
     );
   });
 });

@@ -13,8 +13,13 @@ import { colors, sizes, tones } from '@/theme';
 // Landing runs start-up on mount; keep it pending so nothing calls the server.
 jest.mock('@/lib/startup', () => ({ runStartup: jest.fn(() => new Promise(() => {})) }));
 // Testing-menu states need SHOW_TESTING_MENU (fixed at import; Jest has no APP_ENV).
+// MIN_CHECKING_MS is 0 here, so the result shows at once, except where a test holds Checking….
+let mockMinChecking = 0;
 jest.mock('@/constants/config', () =>
-  Object.defineProperty({ ...jest.requireActual('@/constants/config') }, 'SHOW_TESTING_MENU', { get: () => true }),
+  Object.defineProperties(
+    { ...jest.requireActual('@/constants/config') },
+    { SHOW_TESTING_MENU: { get: () => true }, MIN_CHECKING_MS: { get: () => mockMinChecking } },
+  ),
 );
 
 // The check is unit tested in lib/homeCheck.test.ts; here each test decides its result.
@@ -41,6 +46,7 @@ const colorOf = (text: string) => StyleSheet.flatten(screen.getByText(text).prop
 
 beforeEach(() => {
   jest.useFakeTimers({ now: FRIDAY_2PM });
+  mockMinChecking = 0;
   getSession().reset();
   mockCheck.mockReset().mockResolvedValue('unpaired');
 });
@@ -137,6 +143,50 @@ describe('checking', () => {
     const status = within(screen.getByTestId('home-status')).getByText(h.checking);
     expect(StyleSheet.flatten(status.props.style).color).toBe(tones.muted);
     expect(screen.getByText(h.uploadPrompt)).toBeTruthy();
+  });
+});
+
+describe('"Checking…" is held for MIN_CHECKING_MS', () => {
+  const HOLD = 800;
+  const wait = (ms: number) => act(async () => jest.advanceTimersByTimeAsync(ms));
+  beforeEach(() => {
+    mockMinChecking = HOLD;
+  });
+
+  test('when Home opens, even when the check answers at once', async () => {
+    mockCheck.mockResolvedValue('paired');
+    await openHome();
+    await wait(HOLD - 1);
+    expect(screen.getByRole('button', { name: h.checking })).toBeTruthy();
+    expect(screen.queryByText(h.serverConnected)).toBeNull();
+    await wait(1);
+    expect(screen.getByText(h.serverConnected)).toBeTruthy();
+  });
+
+  test('on Retry too', async () => {
+    mockCheck.mockResolvedValue('serverError');
+    await openHome();
+    await wait(HOLD);
+    mockCheck.mockResolvedValue('paired');
+    await press(h.retry);
+    await wait(HOLD - 1);
+    expect(screen.getByRole('button', { name: h.checking })).toBeTruthy();
+    await wait(1);
+    expect(screen.getByText(h.serverConnected)).toBeTruthy();
+  });
+
+  test('a testing-menu state shows its look at once', async () => {
+    await openHome('?state=paired');
+    expect(screen.getByText(h.serverConnected)).toBeTruthy();
+  });
+
+  test('closing Home during the wait causes no error', async () => {
+    const errors = jest.spyOn(console, 'error');
+    const view = await renderRouter('./src/app', { initialUrl: '/home' });
+    await view.unmount();
+    await wait(HOLD);
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
   });
 });
 

@@ -11,6 +11,8 @@ jest.mock('@/lib/startup', () => ({ runStartup: jest.fn(() => new Promise(() => 
 jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn(async () => 'unpaired') }));
 // Server files loads GET /files/sent; tested in server-files.test.tsx.
 jest.mock('@/api/files', () => ({ getSentFiles: jest.fn(async () => []) }));
+// "Checking…" isn't held here; that wait is tested in home.test.tsx and upload.test.tsx.
+jest.mock('@/constants/config', () => ({ ...jest.requireActual('@/constants/config'), MIN_CHECKING_MS: 0 }));
 
 const APP_DIR = './src/app';
 

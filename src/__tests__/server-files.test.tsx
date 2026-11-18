@@ -1,19 +1,28 @@
 // The Server files screen ("Server status", context/details/1070): the files this phone sent
 // that the PC hasn't downloaded yet, from GET /files/sent, with search, an empty state,
 // loading and failure looks, and Back to Home.
-import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 
 import type { SentFile } from '@/api/types';
 import { strings } from '@/constants/strings';
+import { formatTime } from '@/lib/format';
+import { checkConnection, type ConnectionResult } from '@/lib/homeCheck';
 import { getSession } from '@/state/session';
 
 // Landing runs start-up on mount; keep it pending so nothing calls the server.
 jest.mock('@/lib/startup', () => ({ runStartup: jest.fn(() => new Promise(() => {})) }));
-// Home (the Back target) runs its connection check; tested in home.test.tsx.
-jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn(async () => 'paired') }));
+// The connection check (the status bar here, and Home as the Back target); tested in
+// lib/homeCheck.test.ts. Each test may pick its result.
+jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn() }));
+const checkMock = jest.mocked(checkConnection);
 // Testing-menu states need SHOW_TESTING_MENU (fixed at import; Jest has no APP_ENV).
+// MIN_CHECKING_MS is 0 here, except where a test holds "Checking…".
+let mockMinChecking = 0;
 jest.mock('@/constants/config', () =>
-  Object.defineProperty({ ...jest.requireActual('@/constants/config') }, 'SHOW_TESTING_MENU', { get: () => true }),
+  Object.defineProperties(
+    { ...jest.requireActual('@/constants/config') },
+    { SHOW_TESTING_MENU: { get: () => true }, MIN_CHECKING_MS: { get: () => mockMinChecking } },
+  ),
 );
 
 // The route is unit tested in api/files.test.ts; here each test decides its answer.
@@ -59,6 +68,8 @@ const search = async (text: string) => fireEvent.changeText(screen.getByLabelTex
 
 beforeEach(() => {
   jest.useFakeTimers({ now: NOW });
+  mockMinChecking = 0;
+  checkMock.mockReset().mockResolvedValue('paired');
   getSession().reset();
   mockGetSentFiles.mockReset().mockResolvedValue(FILES);
 });
@@ -139,6 +150,67 @@ describe('loading the list', () => {
   test('no Retry while the list is fine', async () => {
     await open();
     expect(screen.queryByRole('button', { name: s.retry })).toBeNull();
+  });
+});
+
+describe('status bar (as on Upload)', () => {
+  const c = strings.connection;
+  const status = () => screen.getByTestId('server-files-status');
+
+  test('Connected with the green dot, the file count and the time', async () => {
+    await open();
+    expect(within(status()).getByText(c.connected)).toBeTruthy();
+    expect(within(status()).getAllByTestId(/-dot-/, { includeHiddenElements: true })).toHaveLength(1);
+    expect(within(status()).getByText(s.fileCount(3))).toBeTruthy();
+    expect(within(status()).getByText(formatTime(NOW))).toBeTruthy();
+  });
+
+  test.each([
+    ['unpaired', c.notConnected],
+    ['serverError', c.serverError],
+  ] as [ConnectionResult, string][])('%s → %s, no dot', async (result, text) => {
+    checkMock.mockResolvedValue(result);
+    await open();
+    expect(within(status()).getByText(text)).toBeTruthy();
+    expect(within(status()).queryAllByTestId(/-dot-/, { includeHiddenElements: true })).toHaveLength(0);
+  });
+
+  test('"Checking…" is held for MIN_CHECKING_MS', async () => {
+    mockMinChecking = 800;
+    await open();
+    await act(async () => jest.advanceTimersByTimeAsync(799));
+    expect(within(status()).getByText(c.checking)).toBeTruthy();
+    await act(async () => jest.advanceTimersByTimeAsync(1));
+    expect(within(status()).getByText(c.connected)).toBeTruthy();
+  });
+
+  test('no file count until the list has loaded', async () => {
+    holdLoad();
+    await open();
+    expect(within(status()).queryByText(/files?$/)).toBeNull();
+  });
+
+  test('one file: "1 file"', async () => {
+    mockGetSentFiles.mockResolvedValue(FILES.slice(0, 1));
+    await open();
+    expect(within(status()).getByText(s.fileCount(1))).toBeTruthy();
+  });
+
+  test('Retry checks the connection again too', async () => {
+    mockGetSentFiles.mockRejectedValueOnce(new Error('unreachable'));
+    checkMock.mockResolvedValueOnce('serverError');
+    await open();
+    expect(within(status()).getByText(c.serverError)).toBeTruthy();
+    await press(s.retry);
+    await act(async () => {});
+    expect(checkMock).toHaveBeenCalledTimes(2);
+    expect(within(status()).getByText(c.connected)).toBeTruthy();
+  });
+
+  test('a testing-menu state shows Connected without checking', async () => {
+    await open('?state=files');
+    expect(within(status()).getByText(c.connected)).toBeTruthy();
+    expect(checkMock).not.toHaveBeenCalled();
   });
 });
 

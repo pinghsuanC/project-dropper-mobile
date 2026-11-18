@@ -1,23 +1,25 @@
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Balloon, Button, ConfirmWindow, Gif, Icon, Text, Window, type IconName } from '@/components/ui';
 import { HomeState } from '@/constants/screenStates';
 import { strings } from '@/constants/strings';
 import { dateText, greetingText } from '@/lib/greeting';
-import { checkConnection } from '@/lib/homeCheck';
 import { quoteForDate } from '@/lib/quotes';
 import { useScreenState } from '@/lib/screenState';
+import { useConnection, type Connection } from '@/lib/useConnection';
 import { useNow } from '@/lib/useNow';
 import { useSession } from '@/state/session';
 import { sizes, spacing, type TextTone } from '@/theme';
 
 // Home (context/details/1060). Four looks: checking, not connected to a PC, connected, and
 // can't reach the server. The look comes from the connection check Home runs when it opens
-// (lib/homeCheck.ts; Retry runs it again), or from a testing-menu state, which skips it.
+// (lib/useConnection.ts, shared with Upload and Server status; Retry runs it again), or from a
+// testing-menu state, which skips it.
 
-type Look = 'checking' | 'unpaired' | 'paired' | 'serverError';
+/** One look per state of the connection check. */
+type Look = Connection;
 
 const h = strings.home;
 
@@ -70,27 +72,11 @@ export default function Home() {
   const userName = useSession((s) => s.userName);
   const quote = useSession((s) => s.quote);
   const setQuote = useSession((s) => s.setQuote);
-  const [checked, setChecked] = useState<Look>('checking');
+  // Check once when Home opens, "Checking…" held for MIN_CHECKING_MS so a fast answer doesn't
+  // flash by; Retry is `recheck`. A testing-menu state shows its own look instead.
+  const { connection: checked, recheck } = useConnection(!!testState);
   const now = useNow();
   const today = dateText(now);
-
-  // Check once when Home opens (it starts in 'checking'); a testing-menu state shows its look
-  // instead. The result is dropped if Home has closed meanwhile.
-  useEffect(() => {
-    if (testState) return;
-    let current = true;
-    void checkConnection().then((result) => {
-      if (current) setChecked(result);
-    });
-    return () => {
-      current = false;
-    };
-  }, [testState]);
-
-  const retry = useCallback(async () => {
-    setChecked('checking');
-    setChecked(await checkConnection());
-  }, []);
 
   // A new quote each calendar day, also when Home stays open past midnight.
   useEffect(() => {
@@ -100,7 +86,7 @@ export default function Home() {
 
   const lookName = testState ? TEST_LOOKS[testState] : checked;
   const look = LOOKS[lookName];
-  const onAction = lookName === 'serverError' ? () => void retry() : (look.action.go ?? (() => {}));
+  const onAction = lookName === 'serverError' ? () => void recheck() : (look.action.go ?? (() => {}));
 
   return (
     <ScrollView testID="home-content" contentContainerStyle={styles.content}>

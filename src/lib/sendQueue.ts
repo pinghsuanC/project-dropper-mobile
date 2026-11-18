@@ -2,7 +2,8 @@
 // session store, so a send carries on when the user leaves /upload. Never throws.
 //
 // 1. The files to send turn `waiting`; `uploadSending` = 0 of m ("Preparing…").
-// 2. Checksum each file, then one `prepare-batch-upload` for all of them.
+// 2. Checksum each file, then one `prepare-batch-upload` for all of them. "Preparing…" stays
+//    at least MIN_PREPARING_MS, so it doesn't flash by on a fast network.
 // 3. PUT each file to its `upload_url`, one at a time in queue order (n of m, % on the row).
 //    A file whose PUT worked leaves the list; one that failed waits until the send ends.
 // 4. One `finish-batch-upload` with the files whose PUT worked (strict: all or none).
@@ -14,9 +15,10 @@
 import { finishBatchUpload, prepareBatchUpload } from '@/api/files';
 import type { BatchUploadFile } from '@/api/types';
 import { putFile } from '@/api/upload';
-import { DEFAULT_CONTENT_TYPE } from '@/constants/config';
+import { DEFAULT_CONTENT_TYPE, MIN_PREPARING_MS } from '@/constants/config';
 import { fileChecksum } from '@/lib/crypto';
 import type { QueuedFile } from '@/lib/uploadQueue';
+import { atLeast } from '@/lib/wait';
 import { getSession } from '@/state/session';
 
 /** The phone's own label for the i-th file of the batch (echoed back by the server). */
@@ -54,20 +56,23 @@ export async function sendQueue(which: 'queued' | 'failed' = 'queued'): Promise<
   const confirmed = new Set<string>();
   try {
     try {
-      const batch: BatchUploadFile[] = [];
-      for (const [index, file] of files.entries()) {
-        const checksum = await fileChecksum(file.uri);
-        stillMine();
-        batch.push({
-          client_ref: refOf(index),
-          file_name: file.name,
-          size: file.size,
-          content_type: file.mimeType || DEFAULT_CONTENT_TYPE,
-          checksum,
-        });
-      }
+      const prepare = async () => {
+        const batch: BatchUploadFile[] = [];
+        for (const [index, file] of files.entries()) {
+          const checksum = await fileChecksum(file.uri);
+          stillMine();
+          batch.push({
+            client_ref: refOf(index),
+            file_name: file.name,
+            size: file.size,
+            content_type: file.mimeType || DEFAULT_CONTENT_TYPE,
+            checksum,
+          });
+        }
+        return prepareBatchUpload(receiverId, batch);
+      };
 
-      const prepared = new Map((await prepareBatchUpload(receiverId, batch)).map((upload) => [upload.client_ref, upload]));
+      const prepared = new Map((await atLeast(prepare(), MIN_PREPARING_MS)).map((upload) => [upload.client_ref, upload]));
       stillMine();
       const uploads = files.map((file, index) => {
         const upload = prepared.get(refOf(index));
@@ -100,8 +105,7 @@ export async function sendQueue(which: 'queued' | 'failed' = 'queued'): Promise<
         stillMine();
         for (const [fileId, serverId] of put) if (finished.has(serverId)) confirmed.add(fileId);
       }
-    } catch (e){
-      console.log(e)
+    } catch {
       // Anything else (checksum, prepare, finish, offline): nothing more is confirmed, unless
       // the send was replaced, which stillMine() passes on.
       stillMine();

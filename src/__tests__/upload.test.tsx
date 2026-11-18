@@ -21,8 +21,13 @@ jest.mock('@/lib/sendQueue', () => ({ sendQueue: jest.fn(async () => {}) }));
 // Landing runs start-up on mount; keep it pending so nothing calls the server.
 jest.mock('@/lib/startup', () => ({ runStartup: jest.fn(() => new Promise(() => {})) }));
 // Testing-menu states need SHOW_TESTING_MENU (fixed at import; Jest has no APP_ENV).
+// MIN_CHECKING_MS is 0 here, so the result shows at once, except where a test holds Checking….
+let mockMinChecking = 0;
 jest.mock('@/constants/config', () =>
-  Object.defineProperty({ ...jest.requireActual('@/constants/config') }, 'SHOW_TESTING_MENU', { get: () => true }),
+  Object.defineProperties(
+    { ...jest.requireActual('@/constants/config') },
+    { SHOW_TESTING_MENU: { get: () => true }, MIN_CHECKING_MS: { get: () => mockMinChecking } },
+  ),
 );
 
 const u = strings.upload;
@@ -54,6 +59,7 @@ const BACK_EVENT = {} as Parameters<BackListener>[0];
 let backHandlers: BackListener[] = [];
 
 beforeEach(() => {
+  mockMinChecking = 0;
   getSession().reset();
   sendMock.mockClear();
   checkMock.mockReset();
@@ -133,17 +139,25 @@ describe('Add…', () => {
     expect(dialog()).toBeNull();
   });
 
-  test('a file over 100 MB is not added; the error names it; the others are added', async () => {
+  test('a file over 500 MB is not added; the error names it; the others are added', async () => {
     await open();
     willPick({ name: 'holiday-photo.jpg', size: 2.3 * MB }, { name: 'family-video.mov', size: 2.4 * 1024 * MB });
     await press(u.add);
     expect(dialog()).toBeTruthy();
-    expect(screen.getByText(u.tooLargeOne('family-video.mov', '2.4 GB', '100 MB'))).toBeTruthy();
+    expect(screen.getByText(u.tooLargeOne('family-video.mov', '2.4 GB', '500 MB'))).toBeTruthy();
     expect(within(list()).getByText('holiday-photo.jpg', HIDDEN)).toBeTruthy();
     expect(within(list()).queryByText('family-video.mov', HIDDEN)).toBeNull();
   });
 
-  test('exactly 100 MB is accepted', async () => {
+  test('a 400 MB file is accepted (over the old 100 MB limit)', async () => {
+    await open();
+    willPick({ name: 'video.mp4', size: 400 * MB });
+    await press(u.add);
+    expect(dialog()).toBeNull();
+    expect(within(list()).getByText('video.mp4', HIDDEN)).toBeTruthy();
+  });
+
+  test('exactly 500 MB is accepted', async () => {
     await open();
     willPick({ name: 'max.bin', size: MAX_UPLOAD_BYTES });
     await press(u.add);
@@ -153,9 +167,9 @@ describe('Add…', () => {
 
   test('several too large: the error counts them', async () => {
     await open();
-    willPick({ name: 'a.mov', size: 200 * MB }, { name: 'b.mov', size: 300 * MB });
+    willPick({ name: 'a.mov', size: 600 * MB }, { name: 'b.mov', size: 700 * MB });
     await press(u.add);
-    expect(screen.getByText(u.tooLargeMany(2, '100 MB'))).toBeTruthy();
+    expect(screen.getByText(u.tooLargeMany(2, '500 MB'))).toBeTruthy();
     expect(within(list()).getByText(u.empty, HIDDEN)).toBeTruthy();
   });
 
@@ -176,7 +190,7 @@ describe('Add…', () => {
 
   test('OK closes the error', async () => {
     await open();
-    willPick({ name: 'a.mov', size: 200 * MB });
+    willPick({ name: 'a.mov', size: 600 * MB });
     await press(u.add);
     await press(u.ok);
     expect(dialog()).toBeNull();
@@ -184,7 +198,7 @@ describe('Add…', () => {
 
   test('Android Back closes the error', async () => {
     await open();
-    willPick({ name: 'a.mov', size: 200 * MB });
+    willPick({ name: 'a.mov', size: 600 * MB });
     await press(u.add);
     await act(async () => void backHandlers.at(-1)?.(BACK_EVENT));
     expect(dialog()).toBeNull();
@@ -192,7 +206,7 @@ describe('Add…', () => {
 
   test('the screen is hidden from screen readers while a popup is open', async () => {
     await open();
-    willPick({ name: 'a.mov', size: 200 * MB });
+    willPick({ name: 'a.mov', size: 600 * MB });
     await press(u.add);
     expect(screen.getByTestId('upload-content', HIDDEN).props.importantForAccessibility).toBe(
       'no-hide-descendants',
@@ -457,7 +471,7 @@ describe('leaving drops failed files (the Back note)', () => {
     await renderRouter('./src/app', { initialUrl: '/home' });
     getSession().setUploadQueue([queued('a.txt', { status: 'failed' }), queued('b.txt')]);
     await act(() => router.push('/upload'));
-    await press(u.confirm);
+    await press(u.backYes);
     expect(screen).toHavePathname('/home');
     expect(store()).toEqual(['b.txt:queued']);
   });
@@ -530,17 +544,43 @@ describe('leaving drops failed files (the Back note)', () => {
   });
 });
 
+describe('"Checking…" is held for MIN_CHECKING_MS', () => {
+  const HOLD = 800;
+  const wait = (ms: number) => act(async () => jest.advanceTimersByTimeAsync(ms));
+  beforeEach(() => {
+    mockMinChecking = HOLD;
+    jest.useFakeTimers();
+  });
+  afterEach(() => jest.useRealTimers());
+
+  test('even when the check answers at once; Upload stays off until then', async () => {
+    getSession().setUploadQueue([queued('a.txt')]);
+    await open();
+    await wait(HOLD - 1);
+    expect(within(status()).getByText(strings.connection.checking, HIDDEN)).toBeTruthy();
+    expect(disabled(u.upload)).toBe(true);
+    await wait(1);
+    expect(within(status()).getByText(strings.connection.connected, HIDDEN)).toBeTruthy();
+    expect(disabled(u.upload)).toBe(false);
+  });
+
+  test('a testing-menu look shows Connected at once', async () => {
+    await open('?state=inProgress');
+    expect(within(status()).getByText(strings.connection.connected, HIDDEN)).toBeTruthy();
+  });
+});
+
 describe('connection in the status bar', () => {
   test('Checking… while the check runs', async () => {
     checkMock.mockReturnValue(new Promise(() => {}));
     await open();
-    expect(within(status()).getByText(u.checking, HIDDEN)).toBeTruthy();
+    expect(within(status()).getByText(strings.connection.checking, HIDDEN)).toBeTruthy();
   });
 
   test.each([
-    ['paired', u.connected],
-    ['unpaired', u.notConnected],
-    ['serverError', u.serverError],
+    ['paired', strings.connection.connected],
+    ['unpaired', strings.connection.notConnected],
+    ['serverError', strings.connection.serverError],
   ] as [ConnectionResult, string][])('%s → %s', async (result, text) => {
     checkMock.mockResolvedValue(result);
     await open();
@@ -577,16 +617,22 @@ describe('connection in the status bar', () => {
 });
 
 describe('leaving', () => {
-  test('Confirm goes Home', async () => {
+  test('Yes goes Home', async () => {
     await renderRouter('./src/app', { initialUrl: '/home' });
     await act(() => router.push('/upload'));
-    await press(u.confirm);
+    await press(u.backYes);
     expect(screen).toHavePathname('/home');
   });
 
-  test('Cancel is disabled', async () => {
+  test('No is disabled', async () => {
     await open();
-    expect(disabled(u.cancel)).toBe(true);
+    expect(disabled(u.backNo)).toBe(true);
+  });
+
+  test('the Back window has no Confirm or Cancel', async () => {
+    await open();
+    expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
   });
 
   test('the main window ✕ goes Home', async () => {
@@ -635,7 +681,7 @@ describe('testing-menu looks', () => {
 
   test('tooLarge: the too-large popup over a short queue', async () => {
     await open('?state=tooLarge');
-    expect(screen.getByText(u.tooLargeOne('family-video.mov', '2.4 GB', '100 MB'))).toBeTruthy();
+    expect(screen.getByText(u.tooLargeOne('family-video.mov', '2.4 GB', '500 MB'))).toBeTruthy();
     expect(within(list()).getByText('holiday-photo.jpg', HIDDEN)).toBeTruthy();
   });
 
@@ -651,7 +697,7 @@ describe('testing-menu looks', () => {
   test('a look does not run the connection check: it shows Connected', async () => {
     await open('?state=inProgress');
     expect(checkMock).not.toHaveBeenCalled();
-    expect(within(status()).getByText(u.connected, HIDDEN)).toBeTruthy();
+    expect(within(status()).getByText(strings.connection.connected, HIDDEN)).toBeTruthy();
   });
 
   test('a look uses its own mock queue: the store is left alone and Upload sends nothing', async () => {

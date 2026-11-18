@@ -56,7 +56,7 @@ export function deviceFingerprint(): string {
 
 /**
  * The upload `checksum`: lowercase hex SHA-256 of the file's bytes (64 chars). Hashed natively
- * by expo-file-system in small reads, so a 100 MB file never sits in JS memory.
+ * by expo-file-system in small reads, so a 500 MB file never sits in JS memory.
  */
 export async function fileChecksum(uri: string): Promise<string> {
   const digest = (await new File(uri).digest('SHA-256')).toLowerCase();

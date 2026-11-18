@@ -141,8 +141,11 @@ Props added while building, beyond the tables above:
 - **FileList**, upload variant (`variant="upload"`, `files: UploadRow[]`, `onRemove`):
   `UploadRow` = `{ id, name, size, status: queued | waiting | sending | failed, progress? }`.
   One line: name (cut) · size (muted) · then ✕ (queued only; the `close` Icon in a
-  pressable labelled "Remove name", 44px target), `%` + a `mini` ProgressBar
-  (`sizes.uploadRowBar` wide) for sending, "Waiting" (muted), "Failed" (bold, error).
+  pressable labelled "Remove name", 44px target), `%` for sending (rounded down, right-aligned
+  in a `sizes.uploadRowPercent`-wide box so the size doesn't move as the number grows),
+  "Waiting" (muted), "Failed" (bold, error). The row's `mini` ProgressBar was removed on
+  2026-11-18: at 40 px its 20 blocks didn't fit and it looked empty; the `mini` size stays
+  on ProgressBar.
   Name, size and status are one screen-reader stop; the ✕ is its own button. "Sent ✓" and
   "Too large" rows aren't used: sent files leave the queue and too-large ones never join.
 - **ConfirmWindow**: `note?`, a muted caption under the prompt.

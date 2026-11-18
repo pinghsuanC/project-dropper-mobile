@@ -112,6 +112,13 @@ export const strings = {
     waitTitle: 'Pairing step 2: waiting for the server',
     toHome: 'Paired, go to Home',
   },
+  /** The connection segment of a status bar (Upload, Server status; lib/useConnection.ts). */
+  connection: {
+    checking: 'Checking…',
+    connected: 'Connected',
+    notConnected: 'Not connected',
+    serverError: "Can't reach server",
+  },
   serverFiles: {
     title: 'Server status',
     search: 'Search files',
@@ -121,6 +128,8 @@ export const strings = {
     loadError: "Can't reach your server",
     retry: 'Retry',
     back: 'Back',
+    /** The status bar's middle segment once the list has loaded. */
+    fileCount: (n: number) => (n === 1 ? '1 file' : `${n} files`),
   },
   /** File sizes and times in file lists (lib/format.ts). */
   format: {
@@ -161,11 +170,7 @@ export const strings = {
     percent: (n: number) => `${n}%`,
     /** What a screen reader says for a queued row: name, size, then its status when it has one. */
     rowLabel: (name: string, size: string, status?: string) => [name, size, status].filter(Boolean).join(', '),
-    /** Status bar segments. */
-    checking: 'Checking…',
-    connected: 'Connected',
-    notConnected: 'Not connected',
-    serverError: "Can't reach server",
+    /** Status bar segments (the connection's are in `connection`). */
     fileCount: (n: number) => (n === 1 ? '1 file' : `${n} files`),
     sendingCount: (current: number, total: number) => `Sending ${current} of ${total}`,
     /** Before the first file goes: checksums and the server's go-ahead. */
@@ -187,8 +192,8 @@ export const strings = {
     backPrompt: 'Back to home screen?',
     backNote:
       'Only In-progress items will be preserved. Failed items will be automatically removed once leaving this screen. Please check the files uploaded on the server page.',
-    confirm: 'Confirm',
-    cancel: 'Cancel',
+    backYes: 'Yes',
+    backNo: 'No',
   },
   share: {
     title: 'Send to your PC',

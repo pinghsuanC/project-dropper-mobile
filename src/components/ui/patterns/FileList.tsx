@@ -2,8 +2,8 @@
 // - server (default): each row is the name, cut to FILE_NAME_MAX, over a muted
 //   "size · type · Uploaded when · status" line (type from the name's extension; type and
 //   status left out when missing).
-// - upload: one line per file, name and size, then by status: a ✕ (queued), the percent and
-//   a mini progress bar (sending), "Waiting", or "Failed" in the error tone.
+// - upload: one line per file, name and size, then by status: a ✕ (queued), the percent in a
+//   fixed-width box (sending), "Waiting", or "Failed" in the error tone.
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { strings } from '@/constants/strings';
@@ -12,7 +12,6 @@ import { sizes, spacing } from '@/theme';
 
 import { Icon } from '../controls/Icon';
 import { ListBox } from '../controls/ListBox';
-import { ProgressBar } from '../controls/ProgressBar';
 import { Text } from '../primitives/Text';
 
 /**
@@ -89,7 +88,8 @@ const u = strings.upload;
 
 function UploadFileRow({ file, onRemove }: { file: UploadRow; onRemove: (id: string) => void }) {
   const size = formatSize(file.size);
-  const percent = Math.round((file.progress ?? 0) * 100);
+  // Rounded down, so 100% shows only once every byte is written.
+  const percent = Math.floor((file.progress ?? 0) * 100);
   const statusText =
     file.status === 'sending' ? u.percent(percent) : file.status === 'waiting' ? u.waiting : file.status === 'failed' ? u.failed : undefined;
 
@@ -102,11 +102,9 @@ function UploadFileRow({ file, onRemove }: { file: UploadRow; onRemove: (id: str
         </View>
         <Text tone="muted">{size}</Text>
         {file.status === 'sending' ? (
-          <View style={styles.sending}>
-            <View style={styles.miniBar}>
-              <ProgressBar value={file.progress ?? 0} size="mini" />
-            </View>
-            <Text>{statusText}</Text>
+          // A fixed width, so the size beside it doesn't move as 9% becomes 10% and 100%.
+          <View testID="upload-row-percent" style={styles.percent}>
+            <Text align="right">{statusText}</Text>
           </View>
         ) : null}
         {file.status === 'waiting' ? <Text tone="muted">{statusText}</Text> : null}
@@ -136,7 +134,6 @@ const styles = StyleSheet.create({
   uploadRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   uploadInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   name: { flex: 1 },
-  sending: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  miniBar: { width: sizes.uploadRowBar },
+  percent: { width: sizes.uploadRowPercent },
   remove: { padding: spacing.xs },
 });

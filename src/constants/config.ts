@@ -57,6 +57,15 @@ export const NAME_MAX_LENGTH = 20;
 /** How long Register shows "Registered!" before going Home. */
 export const REGISTERED_REDIRECT_MS = 700;
 
+/**
+ * Shortest time "Checking…" stays on screen on Home, Upload and Server status, so a fast answer
+ * doesn't flash by (lib/useConnection.ts; 1060, 1070, 1090).
+ */
+export const MIN_CHECKING_MS = 800;
+
+/** Shortest time Upload's "Preparing…" stays before the first file goes (1090). */
+export const MIN_PREPARING_MS = 600;
+
 /** Locale for dates shown in the app (Home's date line). Text itself is in strings.ts. */
 export const DATE_LOCALE = 'en-US';
 
@@ -64,10 +73,10 @@ export const DATE_LOCALE = 'en-US';
 export const CLOCK_TICK_MS = 60_000;
 
 /**
- * The largest file Upload accepts: 100 MB, counted in 1024s as file sizes are shown
+ * The largest file Upload accepts: 500 MB, counted in 1024s as file sizes are shown
  * (lib/format.ts). Files over it are turned away when picked (1090). The server has no limit.
  */
-export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
 
 /** File names longer than this are cut, with "…", in file lists (2010 FileList). */
 export const FILE_NAME_MAX = 20;

@@ -58,8 +58,8 @@ describe('fixed values', () => {
     expect(loadConfig({}).POPUP_REDIRECT_MS).toBe(2000);
   });
 
-  it('accepts uploads up to 100 MB, counted in 1024s', () => {
-    expect(loadConfig({}).MAX_UPLOAD_BYTES).toBe(104_857_600);
+  it('accepts uploads up to 500 MB, counted in 1024s', () => {
+    expect(loadConfig({}).MAX_UPLOAD_BYTES).toBe(524_288_000);
   });
 
   it('cancels an upload after 30 seconds without progress', () => {

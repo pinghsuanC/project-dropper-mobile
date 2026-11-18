@@ -14,7 +14,9 @@ export class UploadError extends Error {
 }
 
 /**
- * Upload the file at `uri` to `url` as the raw request body. `onProgress` gets 0–1. Throws
+ * Upload the file at `uri` to `url` as the raw request body. `onProgress` gets 0–1, never lower
+ * than it already gave: the native side counts each attempt at the body from 0, so a retried
+ * connection would show 12% → 1% (seen on the phone, 1090). Throws
  * `UploadError` on a non-2xx answer (expo-file-system resolves on any status) or no answer.
  */
 export async function putFile(uri: string, url: string, onProgress: (fraction: number) => void): Promise<void> {
@@ -27,6 +29,8 @@ export async function putFile(uri: string, url: string, onProgress: (fraction: n
     timer = setTimeout(() => controller.abort(), UPLOAD_STALL_TIMEOUT_MS);
   };
 
+  let highest = -1;
+
   let status: number;
   try {
     const result = await new File(uri).upload(url, {
@@ -34,8 +38,12 @@ export async function putFile(uri: string, url: string, onProgress: (fraction: n
       uploadType: UploadType.BINARY_CONTENT,
       signal: controller.signal,
       onProgress: ({ bytesSent, totalBytes }) => {
+        // Bytes are moving even on a retried attempt, so it still restarts the stall wait.
         stillMoving();
-        onProgress(totalBytes > 0 ? bytesSent / totalBytes : 0);
+        const fraction = totalBytes > 0 ? bytesSent / totalBytes : 0;
+        if (fraction <= highest) return;
+        highest = fraction;
+        onProgress(fraction);
       },
     });
     status = result.status;
