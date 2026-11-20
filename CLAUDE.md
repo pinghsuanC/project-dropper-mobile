@@ -72,7 +72,8 @@ The app reads the server URL from `EXPO_PUBLIC_API_BASE_URL` (in `.env`), only i
    ONLY in `expo-secure-store`. Device fingerprint = SHA-256 hex of the Android ID (`expo-application`).
 2. **Register**: `POST /auth/register` → save `device_id` in secure storage.
 3. **Login**: `POST /auth/challenge` → sign → `POST /auth/verify-challenge` → session token (kept in memory).
-   If `/auth/challenge` returns 404, the server forgot this device: clear the device storage
+   Verify-challenge also sends the same `fingerprint` as register.
+   If `/auth/challenge` or `/auth/verify-challenge` returns 404, the server forgot this device: clear the device storage
    (`device_id`, names, key) and go to Register (1010).
 4. **Pairing** (M7): scan the desktop's QR (pairing code + server URL) → claim it on the server.
 5. **Send a file**: pick file → `POST /files/prepare-upload` → PUT bytes to `upload_url` → `POST /files/finish-upload`.
@@ -101,7 +102,7 @@ Protected routes can also return 401 (no or expired session) and 403 (device rev
 | `GET /health` | — | — | `{ "status": "ok" }` (no envelope) | — |
 | `POST /auth/register` → 201 | — | `name, platform ("android"), public_key, fingerprint` | `{ device_id }` | 400 bad / non-Ed25519 key · 409 key already registered |
 | `POST /auth/challenge` | — | `device_id` | `{ challenge }` | 404 unknown device (clear the device, go to Register) · 403 revoked |
-| `POST /auth/verify-challenge` | — | `device_id, challenge, signature` | `{ token }` | 401 any failure · 403 revoked |
+| `POST /auth/verify-challenge` | — | `device_id, challenge, signature, fingerprint` | `{ token }` | 401 any failure (incl. fingerprint mismatch) · 403 revoked · 404 unknown device (clear the device, go to Register) |
 | `GET /auth/me` | ✓ | — | `{ device_id, name, platform }` | |
 | `GET /devices/paired` | ✓ | — | `{ device: { device_id, name, platform, paired_at } \| null }` (null = not paired, still 200) | |
 | `POST /files/prepare-upload` → 201 | ✓ | `file_name, size, content_type, checksum, receiver_id` | `{ file_id, upload_url }` | 404 receiver unknown / revoked |

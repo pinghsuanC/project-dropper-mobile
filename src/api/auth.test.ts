@@ -43,18 +43,20 @@ describe('requestChallenge', () => {
 });
 
 describe('verifyChallenge', () => {
-  it('posts { device_id, challenge, signature } and returns the token', async () => {
+  it('posts { device_id, challenge, signature, fingerprint } and returns the token', async () => {
     respond(200, { message: 'Challenge verified.', data: { token: 'new-token' } });
-    expect(await verifyChallenge('dev-1', 'Y2hhbGxlbmdl', 'c2ln')).toBe('new-token');
+    expect(await verifyChallenge('dev-1', 'Y2hhbGxlbmdl', 'c2ln', 'f'.repeat(64))).toBe('new-token');
     const { url, body, headers } = sent();
     expect(url).toBe('http://server.test:8000/auth/verify-challenge');
-    expect(body).toEqual({ device_id: 'dev-1', challenge: 'Y2hhbGxlbmdl', signature: 'c2ln' });
+    expect(body).toEqual({ device_id: 'dev-1', challenge: 'Y2hhbGxlbmdl', signature: 'c2ln', fingerprint: 'f'.repeat(64) });
     expect(headers.Authorization).toBeUndefined();
   });
 
-  it.each([401, 403, 422])('throws ApiError on %i', async (status) => {
+  it.each([401, 403, 404, 422])('throws ApiError on %i', async (status) => {
     respond(status, { detail: 'x' });
-    await expect(verifyChallenge('dev-1', 'c', 's')).rejects.toBeInstanceOf(ApiError);
+    const error = await verifyChallenge('dev-1', 'c', 's', 'f'.repeat(64)).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status });
   });
 });
 

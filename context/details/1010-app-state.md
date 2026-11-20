@@ -1,6 +1,6 @@
 # 1010: App state and session
 
-Accepted, implemented · updated 2026-11-16 (404 at start-up now forgets the phone) · Part of [1000 App](1000-app.md)
+Accepted, implemented · updated 2026-11-16 (404 at start-up now forgets the phone) · updated 2026-11-19 (verify-challenge sends the fingerprint; its 404 forgets the phone too) · Part of [1000 App](1000-app.md)
 
 Register's own flow (form, register → save → log in, error dialogs) is in
 [1050](1050-register.md).
@@ -55,8 +55,9 @@ getDevice() → session (read once)
      ├─ 404 (server forgot this phone) → clearDevice() (device_id, names, key),
      │        session reset ────────────────────────→ Not registered → Register
      ├─ any other 4xx (403 revoked, 422, …) ────────→ Not registered → Register
-     └─ challenge → sign → POST /auth/verify-challenge
-         ├─ any 4xx (401, 403, …) ──────────────────→ Not registered → Register
+     └─ challenge → sign → POST /auth/verify-challenge (+ fingerprint)
+         ├─ 404 (server forgot this phone) → same as the challenge 404
+         ├─ any other 4xx (401, 403, …) ────────────→ Not registered → Register
          └─ token → setToken → GET /auth/me (checks the session)
              ├─ any 4xx ─────────────── clear token → Not registered → Register
              └─ name → session deviceName
@@ -75,7 +76,13 @@ On any call: network error, timeout, 5xx, or no server URL configured
   and key": the phone forgets it too (`clearDevice()`: `device_id`, both names and the
   private key; session reset) and Landing shows Not registered → Register, where the user
   names it again and a new key is made. Only a 404 does this: a 403 (revoked), any other
-  4xx, or a 5xx keeps the stored device.
+  4xx, or a 5xx keeps the stored device. Since 2026-11-19 a 404 from
+  `/auth/verify-challenge` is handled the same way: `logIn()` passes both calls' errors on
+  and start-up catches any 404 from it.
+- **verify-challenge sends the fingerprint** (server change, 2026-11-19): the same SHA-256
+  hex of the Android ID sent to `/auth/register`. `answerChallenge()` in `lib/login.ts`
+  computes it with `deviceFingerprint()`, so start-up and Register log in the same way. A
+  mismatch is a plain 401, like any other failed verify.
 - **Missing private key** with a `device_id`: the old identity can't sign any more, so make
   and save a new key, delete only the `device_id` (names stay), and go to Register.
 - **`/auth/me` after login** confirms the new token works before Landing says Welcome,
