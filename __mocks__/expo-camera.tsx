@@ -21,8 +21,11 @@ export const requestCameraPermission = jest.fn(async () => {
   return answer;
 });
 
+/** The hook's third item: reads the permission as it is now (e.g. after the system settings). */
+export const getCameraPermission = jest.fn(async () => permission);
+
 export function useCameraPermissions() {
-  return [permission, requestCameraPermission, jest.fn(async () => permission)] as const;
+  return [permission, requestCameraPermission, getCameraPermission] as const;
 }
 
 export function CameraView(props: CameraProps) {
@@ -50,6 +53,7 @@ export const cameraMock = {
     answer = { granted: true, canAskAgain: true, status: 'granted' };
     lastProps = undefined;
     requestCameraPermission.mockClear();
+    getCameraPermission.mockClear();
   },
   GRANTED: { granted: true, canAskAgain: true, status: 'granted' } as Permission,
   UNDECIDED,

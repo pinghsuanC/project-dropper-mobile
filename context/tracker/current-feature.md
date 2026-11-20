@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-20: Pairing fixes: Open camera keeps its size, both steps sit on the teal desktop, a refused camera is asked for again (Open settings once Android blocks it), and step 2 shows its loading bar for at least 2 seconds
 - 2026-11-19: Pairing step 2: a scanned PC code is claimed on the server, then Home shows Connected, or an error with Back to scan again; step 1 turns away QR codes that aren't pairing codes and says codes last 3 minutes
 - 2026-11-19: Log-in sends the device fingerprint to verify-challenge, and a 404 there forgets the phone like a challenge 404
 - 2026-11-18: Home, Upload and Server status hold "Checking…" a moment and share one connection check, with Upload's status bar now on Server status; Upload holds "Preparing…", its Back window reads Yes / No, files up to 500 MB, and a steady percent with no mini bar

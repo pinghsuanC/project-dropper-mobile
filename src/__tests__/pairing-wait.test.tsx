@@ -2,21 +2,28 @@
 // or the Error Dialog with Back to step 1. The claim call itself is in api/pairing.test.ts.
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 import { router } from 'expo-router';
-import { BackHandler } from 'react-native';
+import { BackHandler, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ApiError, UnreachableError } from '@/api/client';
 import { claimPairing } from '@/api/pairing';
 import { strings } from '@/constants/strings';
 import { getSession } from '@/state/session';
+import { colors } from '@/theme';
 
 jest.mock('@/api/pairing', () => ({ claimPairing: jest.fn() }));
 // Home's check last said "not paired": Home must still show Connected after pairing.
 jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn(async () => 'unpaired') }));
 // Testing-menu states need SHOW_TESTING_MENU (fixed at import; Jest has no APP_ENV).
+// The step 2 hold is 0 here, except in its own tests.
+let mockMinPairingWait = 0;
 jest.mock('@/constants/config', () =>
   Object.defineProperties(
     { ...jest.requireActual('@/constants/config') },
-    { SHOW_TESTING_MENU: { get: () => true }, MIN_CHECKING_MS: { value: 0 } },
+    {
+      SHOW_TESTING_MENU: { get: () => true },
+      MIN_CHECKING_MS: { value: 0 },
+      MIN_PAIRING_WAIT_MS: { get: () => mockMinPairingWait },
+    },
   ),
 );
 
@@ -49,6 +56,7 @@ let backHandlers: BackListener[] = [];
 const pressBack = () => act(async () => void backHandlers.at(-1)?.(BACK_EVENT));
 
 beforeEach(() => {
+  mockMinPairingWait = 0;
   getSession().reset();
   claim.mockReset().mockResolvedValue(PC);
   backHandlers = [];
@@ -64,6 +72,18 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks());
 
+/** The first background colour found walking up from a view: what the screen sits on. */
+function backgroundBehind(testID: string) {
+  type Node = { props: { style?: StyleProp<ViewStyle> }; parent: Node | null };
+  let node: Node | null = screen.getByTestId(testID, { includeHiddenElements: true }) as unknown as Node;
+  let background: ViewStyle['backgroundColor'];
+  while (node && background === undefined) {
+    background = StyleSheet.flatten(node.props.style)?.backgroundColor;
+    node = node.parent;
+  }
+  return background;
+}
+
 describe('waiting', () => {
   test('shows the balloon, the step 2 window, the waiting line and a progress bar', async () => {
     hold();
@@ -74,6 +94,13 @@ describe('waiting', () => {
     }
     expect(screen.getByRole('progressbar')).toBeTruthy();
     expect(errorDialog()).toBeNull();
+  });
+
+  test('sits on the teal desktop, not the platform grey', async () => {
+    hold();
+    getSession().setPairingToken(TOKEN);
+    await openWait();
+    expect(backgroundBehind('pairing-wait-content')).toBe(colors.desktop);
   });
 
   test('claims the code once, and takes it out of the session', async () => {
@@ -148,6 +175,48 @@ describe('failed', () => {
     await openWait();
     expect(errorDialog()).toBeTruthy();
     expect(claim).not.toHaveBeenCalled();
+  });
+});
+
+describe('the waiting look stays for MIN_PAIRING_WAIT_MS, so a fast answer does not flash by', () => {
+  const HOLD = 2000;
+  const advance = (ms: number) => act(async () => void (await jest.advanceTimersByTimeAsync(ms)));
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockMinPairingWait = HOLD;
+  });
+  afterEach(() => jest.useRealTimers());
+
+  test('the real hold is 2 seconds', () => {
+    expect(jest.requireActual('@/constants/config').MIN_PAIRING_WAIT_MS).toBe(2000);
+  });
+
+  test('paired at once: still waiting just before 2 s, then Home', async () => {
+    getSession().setPairingToken(TOKEN);
+    await openWait();
+    await advance(HOLD - 1);
+    expect(screen).toHavePathname('/pairing/wait');
+    expect(screen.getByText(p.waiting)).toBeTruthy();
+    expect(getSession().pairedWith).toBeNull();
+    await advance(1);
+    expect(screen).toHavePathname('/home');
+    expect(getSession().pairedWith).toEqual({ pcName: 'Desk PC', deviceId: 'pc-1' });
+  });
+
+  test('failed at once: no error before 2 s, then the Error Dialog', async () => {
+    claim.mockRejectedValue(new ApiError(404, 'x'));
+    getSession().setPairingToken(TOKEN);
+    await openWait();
+    await advance(HOLD - 1);
+    expect(errorDialog()).toBeNull();
+    await advance(1);
+    expect(errorDialog()).toBeTruthy();
+  });
+
+  test('no code: the error at once, nothing to wait for', async () => {
+    await openWait();
+    expect(errorDialog()).toBeTruthy();
   });
 });
 
