@@ -5,19 +5,25 @@ import * as expoCamera from 'expo-camera';
 import { router } from 'expo-router';
 import { BackHandler } from 'react-native';
 
+import { claimPairing } from '@/api/pairing';
 import { strings } from '@/constants/strings';
+import { getSession } from '@/state/session';
 
 // The same module instance the app code gets (a root __mocks__ file).
 const { cameraMock, requestCameraPermission } = expoCamera as unknown as typeof import('../../__mocks__/expo-camera');
 
 // Home (the ✕ target) runs its connection check on mount.
 jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn(async () => 'unpaired') }));
+// Step 2 claims the code; its results are in pairing-wait.test.tsx. Here it never answers.
+jest.mock('@/api/pairing', () => ({ claimPairing: jest.fn(() => new Promise(() => {})) }));
 // The testing-menu states need SHOW_TESTING_MENU (fixed at import; Jest has no APP_ENV).
 jest.mock('@/constants/config', () =>
   Object.defineProperty({ ...jest.requireActual('@/constants/config') }, 'SHOW_TESTING_MENU', { get: () => true }),
 );
 
 const p = strings.pairing;
+const TOKEN = 'tok-AbC_123';
+const QR = JSON.stringify({ server_url: 'http://pc:8000', pairing_token: TOKEN });
 const HIDDEN = { includeHiddenElements: true };
 
 const open = (query = '') => renderRouter('./src/app', { initialUrl: `/pairing/scan${query}` });
@@ -34,6 +40,8 @@ const pressBack = () => act(async () => void backHandlers.at(-1)?.(BACK_EVENT));
 
 beforeEach(() => {
   cameraMock.reset();
+  getSession().reset();
+  jest.mocked(claimPairing).mockClear();
   backHandlers = [];
   jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_event, handler) => {
     backHandlers.push(handler);
@@ -64,6 +72,11 @@ describe('step 1', () => {
     }
     expect(screen.getByRole('button', { name: p.openCamera })).toBeTruthy();
     expect(camera()).toBeNull();
+  });
+
+  test('says how long the code lasts: 3 minutes, as on the server', async () => {
+    await open();
+    expect(screen.getByText('The QR code is only valid for 3 minutes.', { exact: false })).toBeTruthy();
   });
 
   test('✕ opened directly: goes to Home', async () => {
@@ -206,13 +219,40 @@ describe('camera', () => {
     expect(stepOne()).toBeTruthy();
   });
 
-  test('a scanned code is printed and the camera closes', async () => {
+  test('a pairing QR: the camera closes and step 2 opens, with the code in the session only', async () => {
     const log = jest.spyOn(console, 'log').mockImplementation(() => {});
     await openCamera();
-    await act(async () => cameraMock.scan({ type: 'qr', data: 'pairing-code-123' }));
-    expect(log).toHaveBeenCalledWith(expect.any(String), 'pairing-code-123');
+    await act(async () => cameraMock.scan({ type: 'qr', data: QR }));
+    expect(screen).toHavePathname('/pairing/wait');
+    expect(screen.getByText(p.stepTwoTitle)).toBeTruthy();
+    // Step 2 took the code from the session and claimed it.
+    expect(claimPairing).toHaveBeenCalledWith(TOKEN);
+    expect(getSession().pairingToken).toBeNull();
+    // Never in the route (a deep link), a log or the screen.
+    expect(JSON.stringify(screen.toJSON())).not.toContain(TOKEN);
+    expect(JSON.stringify(log.mock.calls)).not.toContain(TOKEN);
+  });
+
+  test('a QR that is not a pairing code: the error, and nothing is sent', async () => {
+    await openCamera();
+    await act(async () => cameraMock.scan({ type: 'qr', data: '{"pairing_code":"tok"}' }));
     expect(camera()).toBeNull();
+    expect(error()).toBeTruthy();
+    expect(screen.getByText(p.notPairingQr)).toBeTruthy();
+    expect(claimPairing).not.toHaveBeenCalled();
+    expect(getSession().pairingToken).toBeNull();
+    expect(screen).toHavePathname('/pairing/scan');
+    await press(p.ok);
     expect(stepOne()).toBeTruthy();
+  });
+
+  test('after a wrong QR, the camera reads again: a pairing QR then opens step 2', async () => {
+    await openCamera();
+    await act(async () => cameraMock.scan({ type: 'qr', data: 'hello' }));
+    await press(p.ok);
+    await press(p.openCamera);
+    await act(async () => cameraMock.scan({ type: 'qr', data: QR }));
+    expect(screen).toHavePathname('/pairing/wait');
   });
 });
 

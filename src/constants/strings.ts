@@ -90,7 +90,7 @@ export const strings = {
     balloonText: 'Please run the program on your computer. A QR code should appear for this phone.',
     stepOneTitle: 'Pair with your PC — Step 1 of 2',
     noShare: "Don't share the QR code with anyone.",
-    validFor: 'The QR code is only valid for 60s.',
+    validFor: 'The QR code is only valid for 3 minutes.',
     scanPrompt: 'Scan the QR code on your PC',
     openCamera: 'Open camera',
     fingerprintNote:
@@ -108,9 +108,16 @@ export const strings = {
     looking: 'Looking for a QR code…',
     cancel: 'Cancel',
     scanError: "Couldn't scan the QR code. Make sure camera access is allowed, then try again.",
+    /** A QR code was read, but it isn't the one the PC shows for pairing. */
+    notPairingQr: "That isn't a File Dropper pairing code. Scan the QR code on your PC.",
     ok: 'OK',
-    waitTitle: 'Pairing step 2: waiting for the server',
-    toHome: 'Paired, go to Home',
+    /** Step 2: claiming the code on the server. */
+    stepTwoBalloonTitle: 'Almost there…',
+    stepTwoBalloonText: 'Your PC is checking the code. This only takes a moment.',
+    stepTwoTitle: 'Pair with your PC — Step 2 of 2',
+    waiting: 'Waiting for the server to respond…',
+    claimError: 'Something went wrong on the server. Please scan the QR code again.',
+    back: 'Back',
   },
   /** The connection segment of a status bar (Upload, Server status; lib/useConnection.ts). */
   connection: {

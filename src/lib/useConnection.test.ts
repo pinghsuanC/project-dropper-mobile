@@ -6,6 +6,7 @@ import { MIN_CHECKING_MS } from '@/constants/config';
 import { strings } from '@/constants/strings';
 import { checkConnection } from '@/lib/homeCheck';
 import { connectionSegment, useConnection } from '@/lib/useConnection';
+import { getSession } from '@/state/session';
 
 jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn() }));
 const checkMock = jest.mocked(checkConnection);
@@ -13,6 +14,7 @@ const c = strings.connection;
 const wait = (ms: number) => act(async () => jest.advanceTimersByTimeAsync(ms));
 
 beforeEach(() => {
+  getSession().reset();
   jest.useFakeTimers();
   checkMock.mockReset().mockResolvedValue('paired');
 });
@@ -62,4 +64,32 @@ test.each([
   ['serverError', c.serverError, false],
 ] as const)('the status bar segment for %s: %s, green dot %s', (connection, text, dot) => {
   expect(connectionSegment(connection)).toEqual({ text, dot });
+});
+
+describe('paired since the check (Pairing step 2 sets the session, 1080)', () => {
+  const PC = { pcName: 'PC', deviceId: 'pc-1' };
+
+  test('"unpaired" from the check shows as paired once the session has a paired PC', async () => {
+    checkMock.mockResolvedValue('unpaired');
+    const { result } = await renderHook(() => useConnection(false));
+    await wait(MIN_CHECKING_MS);
+    expect(result.current.connection).toBe('unpaired');
+    await act(async () => getSession().setPairedWith(PC));
+    expect(result.current.connection).toBe('paired');
+  });
+
+  test('a server error stays a server error', async () => {
+    checkMock.mockResolvedValue('serverError');
+    getSession().setPairedWith(PC);
+    const { result } = await renderHook(() => useConnection(false));
+    await wait(MIN_CHECKING_MS);
+    expect(result.current.connection).toBe('serverError');
+  });
+
+  test('"checking" stays "checking"', async () => {
+    checkMock.mockImplementation(() => new Promise(() => {}));
+    getSession().setPairedWith(PC);
+    const { result } = await renderHook(() => useConnection(false));
+    expect(result.current.connection).toBe('checking');
+  });
 });

@@ -28,6 +28,7 @@ export const API_PATHS = {
   verifyChallenge: '/auth/verify-challenge',
   me: '/auth/me',
   pairedDevice: '/devices/paired',
+  claimPairing: '/pairing-request/claim',
   sentFiles: '/files/sent',
   prepareBatchUpload: '/files/prepare-batch-upload',
   finishBatchUpload: '/files/finish-batch-upload',

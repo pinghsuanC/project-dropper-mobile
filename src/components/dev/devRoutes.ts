@@ -47,7 +47,7 @@ export const DEV_ROUTES: DevSection[] = [
     title: sections.pairing,
     entries: [
       { label: entries.pairingScan, href: '/pairing/scan' },
-      { label: entries.pairingWait, href: '/pairing/wait' },
+      { label: entries.pairingWait, href: { pathname: '/pairing/wait', params: { state: PairingWaitState.WAITING } } },
       { label: entries.pairingCameraNote, href: { pathname: '/pairing/scan', params: { state: PairingScanState.CAMERA_NOTE } } },
       { label: entries.pairingCamera, href: { pathname: '/pairing/scan', params: { state: PairingScanState.CAMERA } } },
       { label: entries.pairingScanError, href: { pathname: '/pairing/scan', params: { state: PairingScanState.ERROR } } },

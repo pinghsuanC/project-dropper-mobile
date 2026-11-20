@@ -8,13 +8,15 @@ import { Balloon, Button, Dialog, Icon, Notice, ProgressBar, Text, Window } from
 import { PairingScanState } from '@/constants/screenStates';
 import { strings } from '@/constants/strings';
 import { cameraStep } from '@/lib/cameraAccess';
+import { pairingTokenFrom } from '@/lib/pairingQr';
 import { useScreenState } from '@/lib/screenState';
-import { printQrCode } from '@/lib/useQrScan';
+import { getSession } from '@/state/session';
 import { spacing } from '@/theme';
 
 // Pairing step 1 (context/details/1080). Four looks: step 1, the camera-access note, the
 // camera, and the error. Open camera picks the next look from the camera permission
-// (lib/cameraAccess.ts). A scanned code is only printed for now; step 2 will claim it.
+// (lib/cameraAccess.ts). A pairing QR hands its code to step 2 through the session (never a
+// route param, a log or the screen); any other QR shows the error with its own message.
 
 type Look = 'stepOne' | 'note' | 'camera' | 'error';
 
@@ -30,6 +32,8 @@ export default function PairingScan() {
   const testState = useScreenState(PairingScanState);
   // A testing-menu state sets the first look; the buttons work from there as usual.
   const [look, setLook] = useState<Look>(() => (testState ? TEST_LOOKS[testState] : 'stepOne'));
+  // The error's message: camera access (the default), or a QR that isn't a pairing code.
+  const [errorMessage, setErrorMessage] = useState<string>(p.scanError);
   const [permission, requestPermission] = useCameraPermissions();
   const backToStepOne = useCallback(() => setLook('stepOne'), []);
 
@@ -43,9 +47,15 @@ export default function PairingScan() {
     return () => sub.remove();
   }, [look, backToStepOne]);
 
+  const showError = useCallback((message: string) => {
+    setErrorMessage(message);
+    setLook('error');
+  }, []);
+
   const openCamera = () => {
     const next = cameraStep(permission);
-    if (next) setLook(next);
+    if (next === 'error') showError(p.scanError);
+    else if (next) setLook(next);
   };
 
   // A failed request (e.g. no activity to show Android's prompt) shows the error too, so the
@@ -53,18 +63,25 @@ export default function PairingScan() {
   const askPermission = async () => {
     try {
       const answer = await requestPermission();
-      setLook(answer.granted ? 'camera' : 'error');
+      if (answer.granted) setLook('camera');
+      else showError(p.scanError);
     } catch {
-      setLook('error');
+      showError(p.scanError);
     }
   };
 
   const onScan = useCallback(
     (data: string) => {
-      printQrCode(data);
+      const token = pairingTokenFrom(data);
+      if (!token) {
+        showError(p.notPairingQr);
+        return;
+      }
+      getSession().setPairingToken(token);
       backToStepOne();
+      router.push('/pairing/wait');
     },
-    [backToStepOne],
+    [backToStepOne, showError],
   );
 
   if (look === 'camera') {
@@ -123,7 +140,7 @@ export default function PairingScan() {
         />
       ) : null}
       {look === 'error' ? (
-        <Dialog kind="error" message={p.scanError} primary={{ label: p.ok, onPress: backToStepOne }} testID="pairing-error" />
+        <Dialog kind="error" message={errorMessage} primary={{ label: p.ok, onPress: backToStepOne }} testID="pairing-error" />
       ) : null}
     </View>
   );

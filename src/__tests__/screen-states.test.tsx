@@ -33,11 +33,10 @@ beforeEach(() => {
   jest.mocked(runStartup).mockClear();
 });
 
-// Register, Home, Server files, Pairing step 1 and Upload are built: their states change the screen itself
+// Register, Home, Server files, Pairing and Upload are built: their states change the screen itself
 // (register.test.tsx, home.test.tsx, server-files.test.tsx,
-// pairing-scan.test.tsx, upload.test.tsx) instead of showing a state line.
+// pairing-scan.test.tsx, pairing-wait.test.tsx, upload.test.tsx) instead of showing a state line.
 test.each([
-  ['/pairing/wait', 'error'],
   ['/share', 'ready'],
   ['/properties', 'notPaired'],
 ])('%s?state=%s shows that state', async (path, state) => {
