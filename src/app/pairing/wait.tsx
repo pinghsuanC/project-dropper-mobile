@@ -4,9 +4,11 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { claimPairing } from '@/api/pairing';
 import { Balloon, Dialog, ProgressBar, Text, Window } from '@/components/ui';
+import { MIN_PAIRING_WAIT_MS } from '@/constants/config';
 import { PairingWaitState } from '@/constants/screenStates';
 import { strings } from '@/constants/strings';
 import { useScreenState } from '@/lib/screenState';
+import { atLeast } from '@/lib/wait';
 import { getSession } from '@/state/session';
 import { spacing } from '@/theme';
 
@@ -36,7 +38,8 @@ export default function PairingWait() {
     claimed.current = true;
     getSession().setPairingToken(null);
     if (!token) return;
-    claimPairing(token).then(
+    // Held for MIN_PAIRING_WAIT_MS either way, so a fast answer doesn't flash by.
+    atLeast(claimPairing(token), MIN_PAIRING_WAIT_MS).then(
       (pc) => {
         getSession().setPairedWith({ pcName: pc.name, deviceId: pc.device_id });
         router.dismissTo('/home');
@@ -49,6 +52,7 @@ export default function PairingWait() {
   return (
     <View style={styles.screen}>
       <ScrollView
+        testID="pairing-wait-content"
         contentContainerStyle={styles.content}
         // While the error is open, TalkBack must stay in it (Dialog notes, 2010).
         importantForAccessibility={error ? 'no-hide-descendants' : 'auto'}

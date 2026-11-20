@@ -1,6 +1,6 @@
 # 1080: Pairing
 
-Accepted, implemented · 2026-11-17 · updated 2026-11-19 (step 2: claim the code, then Home) · Part of [1000 App](1000-app.md)
+Accepted, implemented · 2026-11-17 · updated 2026-11-19 (step 2: claim the code, then Home; asking again after a refusal, Open settings, Open camera's width) · Part of [1000 App](1000-app.md)
 
 Pairing connects this phone to the user's PC: the PC shows a QR code (pairing code + server
 URL), the phone scans it and claims it on the server (`POST /pairing-request/claim`), which
@@ -23,17 +23,46 @@ open. Android Back closes the note, the error or the camera, back to step 1.
 
 ### Camera permission order
 
-Open camera reads `useCameraPermissions()` (`expo-camera`) and picks the look with
-`cameraStep()` (`lib/cameraAccess.ts`):
+Open camera reads the permission **as it is now** (the hook's `getPermission`, falling back to
+the hook's last value), so turning the camera on in Settings and coming back works without
+leaving step 1. `cameraStep()` (`lib/cameraAccess.ts`) picks what happens (decided
+2026-11-19):
 
-| Permission | Look |
+| Permission | Open camera |
 |---|---|
 | still loading (`null`) | nothing (press again) |
 | `granted` | Camera, straight away |
-| not granted, `canAskAgain` | Camera note; Continue asks Android → granted: Camera, denied (or the request fails): Error |
-| not granted, can't ask again | Error (only the system settings can change it now) |
+| never asked (`undetermined`) | Camera note; Continue asks Android |
+| refused before (`denied`), blocked or not | asks Android straight away, no note (the user has read it) |
 
-Our note always comes before Android's prompt, so the user knows why the camera is asked for.
+Asking Android: granted → Camera; refused → Error ("Couldn't scan…"); refused and blocked
+(Android stops asking after the second "Don't allow") → Settings error; the request fails →
+Error. A permission that reads as blocked is still asked once: when it really is blocked,
+Android answers at once without a prompt, and the reading can be out of date. Found on a phone
+on 2026-11-19: with the camera set back to Allow in Settings, the app still read "blocked" in
+Expo Go (most likely Expo Go's own per-project record, kept on top of Android's), so only the
+request could clear it. Our note always comes before Android's **first** prompt, so the user knows why the
+camera is asked for.
+
+**Settings error**: "Camera access is turned off for File Dropper. Turn it on in Settings, then
+try again." with **Open settings** (the default button: closes the error and opens this app's
+settings page, `Linking.openSettings()`) and **OK** (closes it; ✕ = OK). Once blocked, no app
+can show Android's prompt again: only the settings page can turn the camera back on.
+
+### Background
+
+The Pairing Stack (`pairing/_layout.tsx`) gives its screens `contentStyle` with the desktop
+colour, like the root and taskbar Stacks: a nested Stack has its own screen containers, which
+showed Android's light grey around step 1 and step 2 until 2026-11-19.
+
+### Open camera's width
+
+Open camera has a set width, `sizes.pairingCameraButton` (170, as in the prototype). Left to
+size itself in the centred row, the large button with its camera icon stretched down past the
+bottom of the screen on Android (Expo Go, RN 0.88, react-native-svg 15.16; found on the
+emulator 2026-11-19), pushing the balloon off the top. Without the icon it laid out right;
+pinning the icon's size or removing the icon gap did not help. Home's large button, which
+stretches to its window's width, never had it. See the Button note in 2010.
 
 ### Reading the code
 
@@ -64,6 +93,9 @@ Our note always comes before Android's prompt, so the user knows why the camera 
 
 - When it opens it reads `pairingToken` once, clears it from the session, and calls
   `claimPairing()` (`api/pairing.ts`) once (a ref keeps a re-run effect from claiming twice).
+- **The waiting look stays at least 2 s** (`MIN_PAIRING_WAIT_MS` in `config.ts`, through
+  `atLeast()` in `lib/wait.ts`, as Home holds "Checking…"), for success and failure alike: a
+  fast claim made step 2 flash by (decided 2026-11-19). A slower claim isn't held longer.
 - **Paired**: `pairedWith` = `{ pcName, deviceId }` from `paired_with`, then
   `router.dismissTo('/home')`: back to the Home under Pairing, or Home when there is none.
   That Home checked before pairing and found no PC, so `useConnection` shows "paired" when the
@@ -95,5 +127,4 @@ usual. Step 2: `?state=waiting | error` shows that look and claims nothing; the 
 
 ## Still open
 
-- An "Open settings" button for a permission denied for good.
 - Cancel on step 2, unpairing, and telling claim failures apart in the message.

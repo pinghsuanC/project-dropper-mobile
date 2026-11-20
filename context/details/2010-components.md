@@ -44,7 +44,7 @@ src/components/
 |---|---|---|
 | **Window** | Raised face box + `TitleBar` + padded body | `title`, `onClose?`, `onMinimize?`, `onMaximize?` |
 | **TitleBar** | Navy bar, title, _ ▫ ✕ | A button is enabled **only if its handler is passed**, otherwise greyed out |
-| **Button** | Bevel, press, disabled, icon | `variant`: `default` · `large` (icon above label) · `start` (taskbar). **Pressed:** bevel sinks, content moves 1px via `transform`, padding never changes (no resize). **Disabled:** `disabled` tone + `accessibilityState.disabled`. Touch target ≥ 44×44 |
+| **Button** | Bevel, press, disabled, icon | `variant`: `default` · `large` (icon above label) · `start` (taskbar). **Pressed:** bevel sinks, content moves 1px via `transform`, padding never changes (no resize). **Disabled:** `disabled` tone + `accessibilityState.disabled`. Touch target ≥ 44×44. **Width:** give a `large` button a width (its `style`, or a parent that stretches it): an auto-width large button with an icon stretched down the screen on Android (Pairing step 1, 1080) |
 | **TextField** | Sunken input, label, hint, counter | `label`, `hint?`, `maxLength?` (`n/max`), `filter?` (runs on type and paste, before the length limit), `icon?` |
 | **ListBox** | Sunken scrolling list | `items`, `renderRow`, `emptyText`, `selectedId?`, `onSelect?`. Selected row: `titleBar` / `titleText` |
 | **ProgressBar** | Navy blocks | `value?` (none = indeterminate), `size`: `default` · `mini` |

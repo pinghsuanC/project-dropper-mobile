@@ -3,14 +3,15 @@
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 import * as expoCamera from 'expo-camera';
 import { router } from 'expo-router';
-import { BackHandler } from 'react-native';
+import { BackHandler, Linking, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
 import { claimPairing } from '@/api/pairing';
 import { strings } from '@/constants/strings';
 import { getSession } from '@/state/session';
+import { colors, sizes } from '@/theme';
 
 // The same module instance the app code gets (a root __mocks__ file).
-const { cameraMock, requestCameraPermission } = expoCamera as unknown as typeof import('../../__mocks__/expo-camera');
+const { cameraMock, requestCameraPermission, getCameraPermission } = expoCamera as unknown as typeof import('../../__mocks__/expo-camera');
 
 // Home (the ✕ target) runs its connection check on mount.
 jest.mock('@/lib/homeCheck', () => ({ checkConnection: jest.fn(async () => 'unpaired') }));
@@ -55,6 +56,18 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks());
 
+/** The first background colour found walking up from a view: what the screen sits on. */
+function backgroundBehind(testID: string) {
+  type Node = { props: { style?: StyleProp<ViewStyle> }; parent: Node | null };
+  let node: Node | null = screen.getByTestId(testID, { includeHiddenElements: true }) as unknown as Node;
+  let background: ViewStyle['backgroundColor'];
+  while (node && background === undefined) {
+    background = StyleSheet.flatten(node.props.style)?.backgroundColor;
+    node = node.parent;
+  }
+  return background;
+}
+
 describe('step 1', () => {
   test('shows the balloon, the warnings, the prompt, Open camera and the notes', async () => {
     await open();
@@ -72,6 +85,17 @@ describe('step 1', () => {
     }
     expect(screen.getByRole('button', { name: p.openCamera })).toBeTruthy();
     expect(camera()).toBeNull();
+  });
+
+  test('sits on the teal desktop, not the platform grey', async () => {
+    await open();
+    expect(backgroundBehind('pairing-step-one')).toBe(colors.desktop);
+  });
+
+  test('Open camera has a set width, so it keeps its size (an auto-width large button stretched on Android)', async () => {
+    await open();
+    const style = StyleSheet.flatten(screen.getByTestId('pairing-open-camera').props.style);
+    expect(style.width).toBe(sizes.pairingCameraButton);
   });
 
   test('says how long the code lasts: 3 minutes, as on the server', async () => {
@@ -114,13 +138,99 @@ describe('Open camera', () => {
     expect(requestCameraPermission).not.toHaveBeenCalled();
   });
 
-  test('denied for good: the error, without asking', async () => {
-    cameraMock.setPermission(cameraMock.BLOCKED);
+  test('refused before, Android can still ask: asks again straight away, no note; allowed → the camera', async () => {
+    cameraMock.setPermission(cameraMock.DENIED);
+    await open();
+    await press(p.openCamera);
+    expect(requestCameraPermission).toHaveBeenCalledTimes(1);
+    expect(note()).toBeNull();
+    expect(camera()).toBeTruthy();
+  });
+
+  test('refused before and refused again: the error', async () => {
+    cameraMock.setPermission(cameraMock.DENIED);
+    cameraMock.setAnswer(cameraMock.DENIED);
     await open();
     await press(p.openCamera);
     expect(error()).toBeTruthy();
     expect(screen.getByText(p.scanError)).toBeTruthy();
-    expect(requestCameraPermission).not.toHaveBeenCalled();
+    expect(camera()).toBeNull();
+  });
+
+  test('refused again and now blocked by Android: the Settings error', async () => {
+    cameraMock.setPermission(cameraMock.DENIED);
+    cameraMock.setAnswer(cameraMock.BLOCKED);
+    await open();
+    await press(p.openCamera);
+    expect(screen.getByText(p.cameraBlocked)).toBeTruthy();
+    expect(screen.getByRole('button', { name: p.openSettings })).toBeTruthy();
+  });
+
+  test('blocked: asks once (Android shows nothing), still blocked → the Settings error, no note', async () => {
+    cameraMock.setPermission(cameraMock.BLOCKED);
+    cameraMock.setAnswer(cameraMock.BLOCKED);
+    await open();
+    await press(p.openCamera);
+    expect(requestCameraPermission).toHaveBeenCalledTimes(1);
+    expect(error()).toBeTruthy();
+    expect(screen.getByText(p.cameraBlocked)).toBeTruthy();
+    expect(note()).toBeNull();
+  });
+
+  test('reads as blocked, but the request is allowed (turned on in Settings, Expo Go) → the camera', async () => {
+    cameraMock.setPermission(cameraMock.BLOCKED);
+    cameraMock.setAnswer(cameraMock.GRANTED);
+    await open();
+    await press(p.openCamera);
+    expect(camera()).toBeTruthy();
+    expect(error()).toBeNull();
+  });
+
+  test("blocked: Open settings opens this app's settings page", async () => {
+    const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
+    cameraMock.setPermission(cameraMock.BLOCKED);
+    cameraMock.setAnswer(cameraMock.BLOCKED);
+    await open();
+    await press(p.openCamera);
+    await press(p.openSettings);
+    expect(openSettings).toHaveBeenCalledTimes(1);
+    // Back from Settings, step 1 is ready for Open camera.
+    expect(error()).toBeNull();
+    expect(stepOne()).toBeTruthy();
+  });
+
+  test('blocked: OK closes the error, back to step 1', async () => {
+    cameraMock.setPermission(cameraMock.BLOCKED);
+    cameraMock.setAnswer(cameraMock.BLOCKED);
+    await open();
+    await press(p.openCamera);
+    await press(p.ok);
+    expect(error()).toBeNull();
+    expect(stepOne()).toBeTruthy();
+  });
+
+  test('reads the permission as it is now: turned on in Settings → the camera opens', async () => {
+    cameraMock.setPermission(cameraMock.BLOCKED);
+    getCameraPermission.mockResolvedValueOnce(cameraMock.GRANTED);
+    await open();
+    await press(p.openCamera);
+    expect(getCameraPermission).toHaveBeenCalled();
+    expect(camera()).toBeTruthy();
+    expect(error()).toBeNull();
+  });
+
+  test('a camera error after Settings shows the camera message again, not the Settings one', async () => {
+    cameraMock.setPermission(cameraMock.BLOCKED);
+    cameraMock.setAnswer(cameraMock.BLOCKED);
+    await open();
+    await press(p.openCamera);
+    await press(p.ok);
+    cameraMock.setPermission(cameraMock.UNDECIDED);
+    cameraMock.setAnswer(cameraMock.DENIED);
+    await press(p.openCamera);
+    await press(p.continue);
+    expect(screen.getByText(p.scanError)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: p.openSettings })).toBeNull();
   });
 
   test('permission still loading: nothing happens', async () => {

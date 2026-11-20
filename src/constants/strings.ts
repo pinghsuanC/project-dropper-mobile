@@ -108,6 +108,9 @@ export const strings = {
     looking: 'Looking for a QR code…',
     cancel: 'Cancel',
     scanError: "Couldn't scan the QR code. Make sure camera access is allowed, then try again.",
+    /** Android won't ask for the camera again: only the system settings can turn it on. */
+    cameraBlocked: 'Camera access is turned off for File Dropper. Turn it on in Settings, then try again.',
+    openSettings: 'Open settings',
     /** A QR code was read, but it isn't the one the PC shows for pairing. */
     notPairingQr: "That isn't a File Dropper pairing code. Scan the QR code on your PC.",
     ok: 'OK',

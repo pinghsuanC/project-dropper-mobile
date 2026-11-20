@@ -64,6 +64,12 @@ export const REGISTERED_REDIRECT_MS = 700;
  */
 export const MIN_CHECKING_MS = 800;
 
+/**
+ * Shortest time Pairing step 2 shows "Waiting for the server to respond…" before Home or the
+ * error, so a fast claim doesn't flash by (1080).
+ */
+export const MIN_PAIRING_WAIT_MS = 2000;
+
 /** Shortest time Upload's "Preparing…" stays before the first file goes (1090). */
 export const MIN_PREPARING_MS = 600;
 
