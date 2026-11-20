@@ -27,6 +27,7 @@ export const PairingScanState = {
 export type PairingScanState = (typeof PairingScanState)[keyof typeof PairingScanState];
 
 export const PairingWaitState = {
+  WAITING: 'waiting',
   ERROR: 'error',
 } as const;
 export type PairingWaitState = (typeof PairingWaitState)[keyof typeof PairingWaitState];

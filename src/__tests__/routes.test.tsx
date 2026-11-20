@@ -24,11 +24,6 @@ async function openAt(url: string) {
   return renderRouter(APP_DIR, { initialUrl: url });
 }
 
-// fireEvent is async in @testing-library/react-native 14: await it before checking the path.
-async function pressLink(name: string) {
-  await fireEvent.press(screen.getByRole('link', { name }));
-}
-
 // The Taskbar's Properties is a button (1060), not a link.
 const propertiesButton = () => screen.queryByRole('button', { name: strings.taskbar.properties });
 
@@ -64,17 +59,17 @@ describe('Home', () => {
 });
 
 describe('Pairing', () => {
-  // Step 1 is built: its looks are in pairing-scan.test.tsx. Step 2 is still a placeholder.
+  // Both steps are built: their looks are in pairing-scan.test.tsx and pairing-wait.test.tsx.
   test('step 1 renders its window', async () => {
     await openAt('/pairing/scan');
     expect(screen.getByText(strings.pairing.stepOneTitle)).toBeTruthy();
   });
 
-  test('step 2 → Home', async () => {
+  test('step 2 opened with no code: its error, and Back goes to step 1', async () => {
     await openAt('/pairing/wait');
-    expect(screen.getByRole('header', { name: strings.pairing.waitTitle })).toBeTruthy();
-    await pressLink(strings.pairing.toHome);
-    expect(screen).toHavePathname('/home');
+    expect(screen.getByText(strings.pairing.claimError)).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: strings.pairing.back }));
+    expect(screen).toHavePathname('/pairing/scan');
   });
 });
 

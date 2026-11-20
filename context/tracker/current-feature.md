@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-19: Pairing step 2: a scanned PC code is claimed on the server, then Home shows Connected, or an error with Back to scan again; step 1 turns away QR codes that aren't pairing codes and says codes last 3 minutes
 - 2026-11-19: Log-in sends the device fingerprint to verify-challenge, and a 404 there forgets the phone like a challenge 404
 - 2026-11-18: Home, Upload and Server status hold "Checking…" a moment and share one connection check, with Upload's status bar now on Server status; Upload holds "Preparing…", its Back window reads Yes / No, files up to 500 MB, and a steady percent with no mini bar
 - 2026-11-17: Upload page: pick files into a queue (100 MB limit), send them to the paired PC with progress that outlives the screen, and keep failed files with "N of M sent" and Retry failed

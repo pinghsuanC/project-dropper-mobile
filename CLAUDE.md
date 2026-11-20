@@ -105,14 +105,16 @@ Protected routes can also return 401 (no or expired session) and 403 (device rev
 | `POST /auth/verify-challenge` | — | `device_id, challenge, signature, fingerprint` | `{ token }` | 401 any failure (incl. fingerprint mismatch) · 403 revoked · 404 unknown device (clear the device, go to Register) |
 | `GET /auth/me` | ✓ | — | `{ device_id, name, platform }` | |
 | `GET /devices/paired` | ✓ | — | `{ device: { device_id, name, platform, paired_at } \| null }` (null = not paired, still 200) | |
+| `POST /pairing-request/claim` | ✓ | `pairing_token` (from the PC's QR: JSON `{ server_url, pairing_token }`) | `{ paired_with: { device_id, name, platform } }` | 404 invalid / expired / used code · 409 this phone or that PC already paired |
+| `GET /files/sent` | ✓ | — | `[{ file_id, file_name, size, status ("pending" \| "uploaded"), receiver_name, created_at }]` (newest first; `[]` when none) | |
 | `POST /files/prepare-upload` → 201 | ✓ | `file_name, size, content_type, checksum, receiver_id` | `{ file_id, upload_url }` | 404 receiver unknown / revoked |
 | `POST /files/finish-upload` | ✓ | `file_id` | `{ file_id }` | 404 not found / not yours · 409 not `pending`, or upload missing / wrong size |
 | `POST /files/prepare-batch-upload` → 201 | ✓ | `receiver_id, files: [{ client_ref, file_name, size, content_type, checksum }]` | `{ files: [{ client_ref, file_id, upload_url }] }` | 404 receiver unknown / revoked |
 | `POST /files/finish-batch-upload` | ✓ | `file_ids` | `{ file_ids }` | 404 some ids not found / not yours / not `pending` · 409 an upload missing / wrong size (none marked) |
 
-Not built yet (🚧 in `API.md`): pairing (`/pair/*`),
-`POST /auth/unregister`, `GET /files/sent`, `POST /files/cancel`, `welcome_gif` in
-`/auth/me`, and a pairing code on register (M7). No GIF or quote routes.
+Not built yet (🚧 in `API.md`): `POST /auth/unregister`, `POST /devices/{device_id}/revoke`,
+`POST /files/cancel`, `welcome_gif` in `/auth/me`, and a pairing code on register (M7).
+No GIF or quote routes.
 
 Field names are snake_case and must match the server's Pydantic models — a mismatch is a 422.
 Check the server's `/docs` page when unsure; do not guess field names.

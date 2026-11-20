@@ -29,6 +29,11 @@ type SessionState = {
   token: string | null;
   /** null = not paired. */
   pairedWith: PairedPc | null;
+  /**
+   * The code read from the PC's QR code, from Pairing step 1 to step 2 (1080). Memory only,
+   * and never a route param: a route is also a deep link that anyone could send.
+   */
+  pairingToken: string | null;
   quote: Quote;
   /** The Upload queue (1090): kept here so it outlives the screen; not across restarts. */
   uploadQueue: QueuedFile[];
@@ -40,6 +45,7 @@ type SessionActions = {
   setIdentity: (identity: Identity) => void;
   setToken: (token: string | null) => void;
   setPairedWith: (pc: PairedPc | null) => void;
+  setPairingToken: (token: string | null) => void;
   setQuote: (text: string) => void;
   setUploadQueue: (next: QueuedFile[] | ((queue: QueuedFile[]) => QueuedFile[])) => void;
   updateQueuedFile: (id: string, change: Partial<Omit<QueuedFile, 'id'>>) => void;
@@ -56,6 +62,7 @@ const initialState = (): SessionState => ({
   deviceName: null,
   token: null,
   pairedWith: null,
+  pairingToken: null,
   quote: { text: defaultQuotes[0].text },
   uploadQueue: [],
   uploadSending: null,
@@ -67,6 +74,7 @@ export const useSessionStore = create<Session>()((set) => ({
   setIdentity: ({ deviceId, userName, deviceName }) => set({ deviceId, userName, deviceName }),
   setToken: (token) => set({ token }),
   setPairedWith: (pairedWith) => set({ pairedWith }),
+  setPairingToken: (pairingToken) => set({ pairingToken }),
   setQuote: (text) => set({ quote: { text } }),
   setUploadQueue: (next) => set((s) => ({ uploadQueue: typeof next === 'function' ? next(s.uploadQueue) : next })),
   updateQueuedFile: (id, change) =>

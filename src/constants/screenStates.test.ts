@@ -32,7 +32,7 @@ test('each screen has the states the prototype shows', () => {
   expect(Object.values(RegisterState)).toEqual(['unreachable', 'serverError']);
   expect(Object.values(HomeState)).toEqual(['unpaired', 'paired', 'checking', 'serverError']);
   expect(Object.values(PairingScanState)).toEqual(['cameraNote', 'camera', 'error']);
-  expect(Object.values(PairingWaitState)).toEqual(['error']);
+  expect(Object.values(PairingWaitState)).toEqual(['waiting', 'error']);
   expect(Object.values(ServerFilesState)).toEqual(['empty', 'files']);
   expect(Object.values(UploadState)).toEqual(['inProgress', 'partialFailed', 'tooLarge', 'success']);
   expect(Object.values(ShareState)).toEqual(['ready', 'error']);

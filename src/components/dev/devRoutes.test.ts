@@ -64,8 +64,9 @@ test('every entry opens one of the app screens, never the menu itself', () => {
 });
 
 test('screens with a default view have a plain entry, and states use a camelCase `state` param', () => {
+  // Pairing step 2 has none: opened without a code from step 1 it shows its error.
   const plain = allEntries().filter((e) => stateOf(e.href) === undefined).map((e) => pathOf(e.href));
-  expect(plain).toEqual(expect.arrayContaining(['/', '/register', '/pairing/scan', '/pairing/wait', '/upload', '/share', '/properties']));
+  expect(plain).toEqual(expect.arrayContaining(['/', '/register', '/pairing/scan', '/upload', '/share', '/properties']));
 
   for (const { href } of allEntries()) {
     const state = stateOf(href);

@@ -8,6 +8,7 @@ import { MIN_CHECKING_MS } from '@/constants/config';
 import { strings } from '@/constants/strings';
 import { checkConnection, type ConnectionResult } from '@/lib/homeCheck';
 import { atLeast } from '@/lib/wait';
+import { useSession } from '@/state/session';
 
 export type Connection = 'checking' | ConnectionResult;
 
@@ -21,7 +22,8 @@ const TEXT: Record<Connection, string> = {
 
 /**
  * Check once on mount (unless `skip`); `recheck` shows "Checking…" and checks again. A result
- * that comes after the screen has closed is dropped.
+ * that comes after the screen has closed is dropped. "Not paired" turns into "paired" once the
+ * session has a paired PC: Pairing step 2 sets it, and Home is still open under it (1080).
  */
 export function useConnection(skip: boolean): { connection: Connection; recheck: () => Promise<void> } {
   const [connection, setConnection] = useState<Connection>(skip ? 'paired' : 'checking');
@@ -42,7 +44,8 @@ export function useConnection(skip: boolean): { connection: Connection; recheck:
     setConnection(await atLeast(checkConnection(), MIN_CHECKING_MS));
   }, []);
 
-  return { connection, recheck };
+  const pairedSince = useSession((s) => s.pairedWith !== null);
+  return { connection: connection === 'unpaired' && pairedSince ? 'paired' : connection, recheck };
 }
 
 /** The status bar's connection segment: its text, and the green dot when connected. */

@@ -20,11 +20,3 @@ export function useQrScan(onScan: (data: string) => void) {
     [onScan],
   );
 }
-
-/**
- * For now, what a scan does: print the text in dev builds (Pairing step 2 will claim it on
- * the server instead). It's a one-time pairing code, so release builds never print it.
- */
-export function printQrCode(data: string) {
-  if (__DEV__) console.log('QR code scanned:', data);
-}

@@ -32,6 +32,12 @@ export type MeData = { device_id: string; name: string; platform: string };
 export type PairedDevice = { device_id: string; name: string; platform: string; paired_at: number };
 export type PairedDeviceData = { device: PairedDevice | null };
 
+/** `POST /pairing-request/claim`: the token from the PC's QR code. */
+export type PairingClaimRequest = { pairing_token: string };
+/** The PC this phone is now paired with. */
+export type PairedWith = { device_id: string; name: string; platform: string };
+export type PairingClaimData = { paired_with: PairedWith };
+
 /**
  * One file of `GET /files/sent`: sent by this phone, not downloaded yet. `pending` = the
  * upload started but was never confirmed. `created_at` in Unix seconds.
