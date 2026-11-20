@@ -1,7 +1,8 @@
 // The 1010 start-up order, end to end through the real storage, crypto and API client.
 // Only the edges are mocked: expo-secure-store, fetch, the Android ID and random bytes.
 import * as ed from '@noble/ed25519';
-import { sha512 } from '@noble/hashes/sha2.js';
+import { sha256, sha512 } from '@noble/hashes/sha2.js';
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 import * as SecureStore from 'expo-secure-store';
 
 import { apiBaseUrl, STORAGE_KEYS } from '@/constants/config';
@@ -35,6 +36,8 @@ ed.hashes.sha512 = sha512;
 
 const store = (SecureStore as unknown as { __store: Map<string, string> }).__store;
 const CHALLENGE = 'Y2hhbGxlbmdlLWJ5dGVz';
+// What register sent: SHA-256 hex of the mocked Android ID.
+const FINGERPRINT = bytesToHex(sha256(utf8ToBytes('dd96dec43fb81c97')));
 
 // --- fake server -------------------------------------------------------------------------
 
@@ -146,9 +149,11 @@ describe('successful login', () => {
   it('sends the device_id, then a signature of the challenge string', async () => {
     await runStartup();
     expect(calls[0].body).toEqual({ device_id: 'dev-1' });
-    const verify = calls[1].body as { device_id: string; challenge: string; signature: string };
+    const verify = calls[1].body as { device_id: string; challenge: string; signature: string; fingerprint: string };
+    expect(Object.keys(verify).sort()).toEqual(['challenge', 'device_id', 'fingerprint', 'signature']);
     expect(verify.device_id).toBe('dev-1');
     expect(verify.challenge).toBe(CHALLENGE);
+    expect(verify.fingerprint).toBe(FINGERPRINT);
     const signature = Uint8Array.from(atob(verify.signature), (c) => c.charCodeAt(0));
     expect(ed.verify(signature, new TextEncoder().encode(CHALLENGE), publicKey)).toBe(true);
   });
@@ -220,6 +225,31 @@ describe('challenge 404: the server forgot this phone (decided 2026-11-16)', () 
     calls = [];
     expect(await runStartup()).toBe('notRegistered');
     expect(calls).toEqual([]);
+  });
+});
+
+describe('verify-challenge 404: handled like a challenge 404 (decided 2026-11-19)', () => {
+  beforeEach(async () => {
+    await storeDevice();
+    reply('/auth/challenge', ok({ challenge: CHALLENGE }));
+    reply('/auth/verify-challenge', fail(404));
+  });
+
+  it('→ notRegistered, without calling /auth/me', async () => {
+    expect(await runStartup()).toBe('notRegistered');
+    expect(paths()).toEqual(['/auth/challenge', '/auth/verify-challenge']);
+  });
+
+  it('deletes the device_id, both names and the private key', async () => {
+    await runStartup();
+    await expect(getDevice()).resolves.toBeNull();
+    await expect(getPrivateKey()).resolves.toBeNull();
+    for (const key of Object.values(STORAGE_KEYS)) expect(store.has(key)).toBe(false);
+  });
+
+  it('clears the identity it had put in the session', async () => {
+    await runStartup();
+    expect(getSession()).toMatchObject({ deviceId: null, userName: null, deviceName: null, token: null });
   });
 });
 

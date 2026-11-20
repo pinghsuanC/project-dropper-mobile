@@ -1,7 +1,7 @@
 // The log-in steps start-up and Register share (context/details/1010, 1050).
 import * as ed from '@noble/ed25519';
-import { sha512 } from '@noble/hashes/sha2.js';
-import { utf8ToBytes } from '@noble/hashes/utils.js';
+import { sha256, sha512 } from '@noble/hashes/sha2.js';
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 
 import { getMe, requestChallenge, verifyChallenge } from '@/api/auth';
 import { ApiError } from '@/api/client';
@@ -21,6 +21,8 @@ ed.hashes.sha512 = sha512;
 const CHALLENGE = 'Y2hhbGxlbmdlLWJ5dGVz';
 const privateKey = Uint8Array.from({ length: 32 }, (_, i) => i + 1);
 const publicKey = ed.getPublicKey(privateKey);
+// The fingerprint register sends: SHA-256 hex of the (mocked) Android ID.
+const FINGERPRINT = bytesToHex(sha256(utf8ToBytes('android-id')));
 const fromBase64 = (text: string) => Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
 
 beforeEach(() => {
@@ -34,8 +36,9 @@ beforeEach(() => {
 describe('answerChallenge', () => {
   it('signs the challenge string itself as UTF-8 and returns the token', async () => {
     await expect(answerChallenge('dev-1', CHALLENGE, privateKey)).resolves.toBe('token-1');
-    const [deviceId, challenge, signature] = jest.mocked(verifyChallenge).mock.calls[0];
+    const [deviceId, challenge, signature, fingerprint] = jest.mocked(verifyChallenge).mock.calls[0];
     expect([deviceId, challenge]).toEqual(['dev-1', CHALLENGE]);
+    expect(fingerprint).toBe(FINGERPRINT);
     expect(ed.verify(fromBase64(signature), utf8ToBytes(CHALLENGE), publicKey)).toBe(true);
   });
 });
@@ -44,7 +47,8 @@ describe('logIn', () => {
   it('asks for a challenge for this device, answers it and returns the token', async () => {
     await expect(logIn('dev-1', privateKey)).resolves.toBe('token-1');
     expect(requestChallenge).toHaveBeenCalledWith('dev-1');
-    expect(jest.mocked(verifyChallenge).mock.calls[0].slice(0, 2)).toEqual(['dev-1', CHALLENGE]);
+    const [deviceId, challenge, , fingerprint] = jest.mocked(verifyChallenge).mock.calls[0];
+    expect([deviceId, challenge, fingerprint]).toEqual(['dev-1', CHALLENGE, FINGERPRINT]);
   });
 
   it('passes a challenge error on (e.g. 404)', async () => {

@@ -2,13 +2,16 @@
 // challenge → sign → verify-challenge gives a session token; /auth/me then checks it and
 // gives the server's device name. The token lives in the session only, never in storage.
 import { getMe, requestChallenge, verifyChallenge } from '@/api/auth';
-import { signChallenge } from '@/lib/crypto';
+import { deviceFingerprint, signChallenge } from '@/lib/crypto';
 import { getSession, type Identity } from '@/state/session';
 
-/** Sign a challenge and trade it for a session token (`POST /auth/verify-challenge`). */
+/**
+ * Sign a challenge and trade it for a session token (`POST /auth/verify-challenge`), with the
+ * same device fingerprint register sent: the server checks it before the signature.
+ */
 export async function answerChallenge(deviceId: string, challenge: string, privateKey: Uint8Array): Promise<string> {
   const signature = await signChallenge(challenge, privateKey);
-  return verifyChallenge(deviceId, challenge, signature);
+  return verifyChallenge(deviceId, challenge, signature, deviceFingerprint());
 }
 
 /** challenge → sign → verify. Errors (a 404 on the challenge too) are passed on. */

@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-19: Log-in sends the device fingerprint to verify-challenge, and a 404 there forgets the phone like a challenge 404
 - 2026-11-18: Home, Upload and Server status hold "Checking…" a moment and share one connection check, with Upload's status bar now on Server status; Upload holds "Preparing…", its Back window reads Yes / No, files up to 500 MB, and a steady percent with no mini bar
 - 2026-11-17: Upload page: pick files into a queue (100 MB limit), send them to the paired PC with progress that outlives the screen, and keep failed files with "N of M sent" and Retry failed
 - 2026-11-17: Failed uploads stay in the queue as Failed with "2 of 3 sent. Please retry.", Retry failed sends just those again, leaving the screen drops them and their popup, and a send stopped by a reset writes nothing back

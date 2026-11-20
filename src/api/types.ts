@@ -14,7 +14,7 @@ export type ErrorDetail = string | ValidationIssue[] | null;
 export type ChallengeRequest = { device_id: string };
 export type ChallengeData = { challenge: string };
 
-export type VerifyChallengeRequest = { device_id: string; challenge: string; signature: string };
+export type VerifyChallengeRequest = { device_id: string; challenge: string; signature: string; fingerprint: string };
 export type VerifyChallengeData = { token: string };
 
 export type RegisterRequest = {

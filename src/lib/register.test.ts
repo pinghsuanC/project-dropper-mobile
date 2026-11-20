@@ -155,6 +155,14 @@ describe('registered', () => {
     expect(JSON.stringify(calls.map((c) => c.body))).not.toContain('Alex');
   });
 
+  it('logs in with the same fingerprint it registered with', async () => {
+    await registerPhone(NAMES);
+    const verify = calls.find((c) => c.path === '/auth/verify-challenge')?.body as Record<string, unknown>;
+    expect(Object.keys(verify).sort()).toEqual(['challenge', 'device_id', 'fingerprint', 'signature']);
+    expect(verify.fingerprint).toBe(FINGERPRINT);
+    expect(verify.fingerprint).toBe(registerBody().fingerprint);
+  });
+
   it('reports its steps in order', async () => {
     const steps: RegisterStep[] = [];
     await registerPhone(NAMES, (step) => steps.push(step));

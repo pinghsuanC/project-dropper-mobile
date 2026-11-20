@@ -18,9 +18,17 @@ export async function requestChallenge(deviceId: string): Promise<string> {
   return data.challenge;
 }
 
-/** `POST /auth/verify-challenge`. Returns the session token: keep it in memory only. */
-export async function verifyChallenge(deviceId: string, challenge: string, signature: string): Promise<string> {
-  const body: VerifyChallengeRequest = { device_id: deviceId, challenge, signature };
+/**
+ * `POST /auth/verify-challenge`. `fingerprint` is the same value sent to `/auth/register`.
+ * Returns the session token: keep it in memory only.
+ */
+export async function verifyChallenge(
+  deviceId: string,
+  challenge: string,
+  signature: string,
+  fingerprint: string,
+): Promise<string> {
+  const body: VerifyChallengeRequest = { device_id: deviceId, challenge, signature, fingerprint };
   const data = await request<VerifyChallengeData>(API_PATHS.verifyChallenge, { method: 'POST', body });
   return data.token;
 }
