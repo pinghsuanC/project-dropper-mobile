@@ -4,6 +4,7 @@
 import * as fileSystem from 'expo-file-system';
 import type { UploadOptions } from 'expo-file-system';
 
+import { setCloudflareAccess } from '@/api/client';
 import { putFile, UploadError } from '@/api/upload';
 import { UPLOAD_STALL_TIMEOUT_MS } from '@/constants/config';
 import { getSession } from '@/state/session';
@@ -32,6 +33,17 @@ test('sends no Authorization header (the token never goes to R2)', async () => {
   await putFile(URI, URL, () => {});
   const options = fs.mockUpload.mock.calls[0][2];
   expect(JSON.stringify(options?.headers ?? {})).not.toMatch(/authorization|secret-token/i);
+});
+
+test('sends no Cloudflare Access headers (they are for the API server only; 1100)', async () => {
+  setCloudflareAccess({ clientId: 'id.access', accessKey: 'cf-secret' });
+  try {
+    await putFile(URI, URL, () => {});
+    const options = fs.mockUpload.mock.calls[0][2];
+    expect(JSON.stringify(options?.headers ?? {})).not.toMatch(/cf-access|id\.access|cf-secret/i);
+  } finally {
+    setCloudflareAccess(null);
+  }
 });
 
 test('reports progress as 0–1', async () => {

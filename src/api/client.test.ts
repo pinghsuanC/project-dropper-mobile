@@ -1,4 +1,12 @@
-import { ApiError, detailText, request, UnreachableError } from '@/api/client';
+import {
+  ApiError,
+  checkHealth,
+  CloudflareRefusedError,
+  detailText,
+  request,
+  setCloudflareAccess,
+  UnreachableError,
+} from '@/api/client';
 import { REQUEST_TIMEOUT_MS } from '@/constants/config';
 import { getSession } from '@/state/session';
 
@@ -26,6 +34,7 @@ function lastCall(): { url: string; init: RequestInit & { headers: Record<string
 beforeEach(() => {
   fetchMock.mockReset();
   getSession().reset();
+  setCloudflareAccess(null);
 });
 
 describe('successful requests', () => {
@@ -200,5 +209,147 @@ describe('errors', () => {
     const error = (await request('/protected', { auth: true }).catch((e: unknown) => e)) as Error;
     expect(error.message).not.toContain('secret-token');
     expect(error.message).not.toContain('server.test');
+  });
+});
+
+// --- Cloudflare Access (1100) ------------------------------------------------------------
+
+const ACCESS = { clientId: 'id.access', accessKey: 'cf-secret-key' };
+
+/** A response that isn't JSON (Cloudflare's own pages are HTML). */
+function respondHtml(status: number, url = 'http://server.test:8000/x') {
+  fetchMock.mockResolvedValueOnce({
+    ok: status >= 200 && status < 300,
+    status,
+    url,
+    json: async () => {
+      throw new SyntaxError('Unexpected token <');
+    },
+  });
+}
+
+describe('Cloudflare Access headers', () => {
+  it('adds both headers to a public route when values are set', async () => {
+    setCloudflareAccess(ACCESS);
+    respond(200, { message: 'ok', data: {} });
+    await request('/auth/challenge', { method: 'POST', body: {} });
+    expect(lastCall().init.headers['CF-Access-Client-Id']).toBe('id.access');
+    expect(lastCall().init.headers['CF-Access-Client-Secret']).toBe('cf-secret-key');
+  });
+
+  it('adds both next to Authorization on a protected route', async () => {
+    setCloudflareAccess(ACCESS);
+    getSession().setToken('secret-token');
+    respond(200, { message: 'ok', data: {} });
+    await request('/protected', { auth: true });
+    const { headers } = lastCall().init;
+    expect(headers.Authorization).toBe('Bearer secret-token');
+    expect(headers['CF-Access-Client-Id']).toBe('id.access');
+    expect(headers['CF-Access-Client-Secret']).toBe('cf-secret-key');
+  });
+
+  it('sends neither header when no values are set', async () => {
+    respond(200, { message: 'ok', data: {} });
+    await request('/x');
+    expect(Object.keys(lastCall().init.headers).filter((h) => h.startsWith('CF-'))).toEqual([]);
+  });
+
+  it('stops sending them once cleared', async () => {
+    setCloudflareAccess(ACCESS);
+    setCloudflareAccess(null);
+    respond(200, { message: 'ok', data: {} });
+    await request('/x');
+    expect(lastCall().init.headers['CF-Access-Client-Id']).toBeUndefined();
+  });
+});
+
+describe('checkHealth', () => {
+  it('GETs /health and resolves on 200 { status: "ok" } (no envelope)', async () => {
+    respond(200, { status: 'ok' });
+    await expect(checkHealth()).resolves.toBeUndefined();
+    const { url, init } = lastCall();
+    expect(url).toBe('http://server.test:8000/health');
+    expect(init.method).toBe('GET');
+    expect(init.headers.Authorization).toBeUndefined();
+  });
+
+  it('sends the stored values by default', async () => {
+    setCloudflareAccess(ACCESS);
+    respond(200, { status: 'ok' });
+    await checkHealth();
+    expect(lastCall().init.headers['CF-Access-Client-Id']).toBe('id.access');
+  });
+
+  it('tries the values it is given, even when none are stored', async () => {
+    respond(200, { status: 'ok' });
+    await checkHealth({ clientId: 'new-id', accessKey: 'new-key' });
+    expect(lastCall().init.headers['CF-Access-Client-Id']).toBe('new-id');
+    expect(lastCall().init.headers['CF-Access-Client-Secret']).toBe('new-key');
+  });
+
+  it('given null, sends no Cloudflare headers even when some are stored', async () => {
+    setCloudflareAccess(ACCESS);
+    respond(200, { status: 'ok' });
+    await checkHealth(null);
+    expect(lastCall().init.headers['CF-Access-Client-Id']).toBeUndefined();
+  });
+
+  it('503 (database down) → ApiError(503)', async () => {
+    respond(503, { detail: 'database unavailable' });
+    await expect(checkHealth()).rejects.toMatchObject({ status: 503, detail: 'database unavailable' });
+  });
+
+  it('200 without status "ok" → ApiError', async () => {
+    respond(200, { status: 'starting' });
+    await expect(checkHealth()).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('no answer → UnreachableError', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('Network request failed'));
+    await expect(checkHealth()).rejects.toBeInstanceOf(UnreachableError);
+  });
+
+  it('a Cloudflare refusal → CloudflareRefusedError', async () => {
+    respondHtml(403);
+    await expect(checkHealth()).rejects.toBeInstanceOf(CloudflareRefusedError);
+  });
+});
+
+describe('Cloudflare refusals', () => {
+  it.each([401, 403])('%i with a page that is not JSON → CloudflareRefusedError', async (status) => {
+    respondHtml(status);
+    const error = await request('/x').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(CloudflareRefusedError);
+    // Still an ApiError with the status, so code that only knows ApiError keeps working.
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status, detail: null });
+  });
+
+  it('a redirect to the Cloudflare Access login page → CloudflareRefusedError', async () => {
+    respondHtml(200, 'https://myteam.cloudflareaccess.com/cdn-cgi/access/login/server.test');
+    await expect(request('/x')).rejects.toBeInstanceOf(CloudflareRefusedError);
+  });
+
+  it("the server's own 403 (JSON detail, e.g. revoked) stays an ApiError(403)", async () => {
+    respond(403, { detail: 'Device revoked' });
+    const error = await request('/x').catch((e: unknown) => e);
+    expect(error).not.toBeInstanceOf(CloudflareRefusedError);
+    expect(error).toMatchObject({ status: 403, detail: 'Device revoked' });
+  });
+
+  it('a 5xx page that is not JSON (e.g. the tunnel is down) is not a refusal', async () => {
+    respondHtml(530);
+    const error = await request('/x').catch((e: unknown) => e);
+    expect(error).not.toBeInstanceOf(CloudflareRefusedError);
+    expect(error).toMatchObject({ status: 530 });
+  });
+
+  it('never puts the values in an error message', async () => {
+    setCloudflareAccess(ACCESS);
+    respondHtml(403);
+    const error = (await request('/x').catch((e: unknown) => e)) as Error;
+    expect(error.message).not.toContain('cf-secret-key');
+    expect(error.message).not.toContain('id.access');
+    expect(JSON.stringify(error)).not.toContain('cf-secret-key');
   });
 });

@@ -12,8 +12,11 @@ import { landingPopups, sizes, spacing } from '@/theme';
 
 // Landing (context/details/1010): runs start-up, shows its outcome over the terminal, then
 // moves on with router.replace so Back can't return here. Server unreachable waits for Retry.
+// The server config (1100) goes straight to its screen, with no popup.
 
 type Phase = 'connecting' | StartupOutcome;
+/** The outcomes Landing shows a popup for. */
+type PopupOutcome = Exclude<StartupOutcome, 'serverConfig'>;
 
 /** Where Welcome and Not registered go once their popup has shown. */
 const REDIRECTS: Partial<Record<Phase, Href>> = {
@@ -22,7 +25,7 @@ const REDIRECTS: Partial<Record<Phase, Href>> = {
 };
 
 /** Each outcome's GIF slot, which is also its key in `landingPopups` (position). */
-const POPUP_SLOT: Record<StartupOutcome, GifSlot & keyof typeof landingPopups> = {
+const POPUP_SLOT: Record<PopupOutcome, GifSlot & keyof typeof landingPopups> = {
   welcome: 'welcome',
   notRegistered: 'notWelcome',
   unreachable: 'offline',
@@ -46,6 +49,10 @@ export default function Landing() {
 
   // Redirect once the popup has been up for POPUP_REDIRECT_MS; leaving early cancels it.
   useEffect(() => {
+    if (phase === 'serverConfig') {
+      router.replace('/update-server-config');
+      return;
+    }
     const target = REDIRECTS[phase];
     if (!target) return;
     const timer = setTimeout(() => router.replace(target), POPUP_REDIRECT_MS);
@@ -60,12 +67,12 @@ export default function Landing() {
   return (
     <View style={styles.screen}>
       <Terminal lines={[strings.landing.connecting]} style={styles.terminal} />
-      {phase === 'connecting' ? null : <OutcomePopup outcome={phase} userName={userName} onRetry={retry} />}
+      {phase === 'connecting' || phase === 'serverConfig' ? null : <OutcomePopup outcome={phase} userName={userName} onRetry={retry} />}
     </View>
   );
 }
 
-type PopupProps = { outcome: StartupOutcome; userName: string | null; onRetry: () => void };
+type PopupProps = { outcome: PopupOutcome; userName: string | null; onRetry: () => void };
 
 function OutcomePopup({ outcome, userName, onRetry }: PopupProps) {
   const slot = POPUP_SLOT[outcome];
@@ -85,7 +92,7 @@ function OutcomePopup({ outcome, userName, onRetry }: PopupProps) {
   );
 }
 
-function popupText(outcome: StartupOutcome, userName: string | null): { title: string; message: string } {
+function popupText(outcome: PopupOutcome, userName: string | null): { title: string; message: string } {
   switch (outcome) {
     case 'welcome':
       return {

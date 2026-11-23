@@ -155,6 +155,17 @@ describe('server unreachable', () => {
   });
 });
 
+describe('server config (1100)', () => {
+  test('goes straight to /update-server-config, with no popup and no wait', async () => {
+    runStartupMock.mockResolvedValue('serverConfig');
+    await openLanding();
+    await settle();
+    expect(router.replace).toHaveBeenCalledWith('/update-server-config');
+    expect(screen).toHavePathname('/update-server-config');
+    expect(screen.queryByTestId('landing-popup')).toBeNull();
+  });
+});
+
 test('leaving Landing before the delay cancels the redirect', async () => {
   runStartupMock.mockResolvedValue('welcome');
   await openLanding();

@@ -1,6 +1,27 @@
 // All user-facing text, grouped by screen. Text with values in it is a function.
 import type { FileStatus } from './enums';
 
+/** Text shared by every screen that scans a QR code on the PC (1080, 1100). */
+const qrScan = {
+  openCamera: 'Open camera',
+  /** The note before Android's camera permission prompt. */
+  cameraNoteTitle: 'Camera',
+  cameraNoteHeading: 'Camera access',
+  cameraNote: 'File Dropper uses the camera only to read the QR code on your PC. Android will ask for permission next.',
+  continue: 'Continue',
+  notNow: 'Not now',
+  /** The camera window. */
+  scanTitle: 'Scan QR code',
+  pointCamera: 'Point the camera at the QR code on your PC.',
+  looking: 'Looking for a QR code…',
+  cancel: 'Cancel',
+  scanError: "Couldn't scan the QR code. Make sure camera access is allowed, then try again.",
+  /** Android won't ask for the camera again: only the system settings can turn it on. */
+  cameraBlocked: 'Camera access is turned off for File Dropper. Turn it on in Settings, then try again.',
+  openSettings: 'Open settings',
+  ok: 'OK',
+} as const;
+
 export const strings = {
   /** Text inside the shared UI components (src/components/ui/). */
   ui: {
@@ -85,35 +106,24 @@ export const strings = {
   taskbar: {
     properties: 'Properties',
   },
+  /**
+   * Pairing step 1 and the server config, both scanning a QR code on the PC (1080, 1100).
+   * The camera note, window and errors are the same on both (components/pairing/QrScanStep).
+   */
+  qrScan,
   pairing: {
+    ...qrScan,
     balloonTitle: "Let's pair!",
     balloonText: 'Please run the program on your computer. A QR code should appear for this phone.',
     stepOneTitle: 'Pair with your PC — Step 1 of 2',
     noShare: "Don't share the QR code with anyone.",
     validFor: 'The QR code is only valid for 3 minutes.',
     scanPrompt: 'Scan the QR code on your PC',
-    openCamera: 'Open camera',
     fingerprintNote:
       'The connection is done between device fingerprints, a factory reset of your phone will need a re-pairing.',
     onePcNote: 'Currently you can only connect with 1 PC.',
-    /** The note before Android's camera permission prompt. */
-    cameraNoteTitle: 'Camera',
-    cameraNoteHeading: 'Camera access',
-    cameraNote: 'File Dropper uses the camera only to read the QR code on your PC. Android will ask for permission next.',
-    continue: 'Continue',
-    notNow: 'Not now',
-    /** The camera window. */
-    scanTitle: 'Scan QR code',
-    pointCamera: 'Point the camera at the QR code on your PC.',
-    looking: 'Looking for a QR code…',
-    cancel: 'Cancel',
-    scanError: "Couldn't scan the QR code. Make sure camera access is allowed, then try again.",
-    /** Android won't ask for the camera again: only the system settings can turn it on. */
-    cameraBlocked: 'Camera access is turned off for File Dropper. Turn it on in Settings, then try again.',
-    openSettings: 'Open settings',
     /** A QR code was read, but it isn't the one the PC shows for pairing. */
     notPairingQr: "That isn't a File Dropper pairing code. Scan the QR code on your PC.",
-    ok: 'OK',
     /** Step 2: claiming the code on the server. */
     stepTwoBalloonTitle: 'Almost there…',
     stepTwoBalloonText: 'Your PC is checking the code. This only takes a moment.',
@@ -121,6 +131,25 @@ export const strings = {
     waiting: 'Waiting for the server to respond…',
     claimError: 'Something went wrong on the server. Please scan the QR code again.',
     back: 'Back',
+  },
+  /** The server config (1100): scanning the PC's server-config QR code before Landing. */
+  serverConfig: {
+    balloonTitle: "Let's connect!",
+    balloonText: 'Please run the program on your computer and open its server code. A QR code should appear for this phone.',
+    windowTitle: 'Connect to the server',
+    noShare: "Don't share the QR code with anyone.",
+    scanPrompt: 'Scan the code on the desktop if you want to join the server.',
+    onceNote: 'You only need to do this once, or when the server gets new access keys.',
+    /** A QR code was read, but it isn't the PC's server-config code. */
+    notServerConfigQr: "That isn't a File Dropper server code. Scan the server code on your PC.",
+    /** After a scan, while GET /health runs with the scanned values. */
+    checking: 'Checking the server…',
+    /** Cloudflare turned the scanned values away. */
+    refused: "Those values didn't get through. Scan the QR code on your PC again.",
+    /** No answer, or the server is up but its database isn't. */
+    unreachable: "Couldn't reach the server. Make sure it's running, then scan the QR code again.",
+    /** The server answered, but secure storage couldn't keep the values. */
+    saveFailed: "Couldn't save the values on this phone. Please scan the QR code again.",
   },
   /** The connection segment of a status bar (Upload, Server status; lib/useConnection.ts). */
   connection: {
@@ -223,6 +252,7 @@ export const strings = {
     registerSampleCode: 'XXX',
     registerSampleDetails: '<detail from the server goes here>',
     sections: {
+      serverConfig: 'Server config',
       landing: 'Landing',
       register: 'Register',
       home: 'Home',
@@ -233,6 +263,11 @@ export const strings = {
       device: 'Device & User',
     },
     entries: {
+      serverConfig: 'Server config - scan',
+      serverConfigCameraNote: 'Server config - camera note',
+      serverConfigCamera: 'Server config - camera',
+      serverConfigChecking: 'Server config - checking',
+      serverConfigError: 'Server config - error',
       landing: 'Landing',
       register: 'Register',
       registerUnreachable: 'Error - server unreachable',

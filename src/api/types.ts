@@ -71,3 +71,12 @@ export type PrepareBatchUploadData = { files: PreparedUpload[] };
 
 export type FinishBatchUploadRequest = { file_ids: string[] };
 export type FinishBatchUploadData = { file_ids: string[] };
+
+/** `GET /health`: no envelope (the server repo's API.md). */
+export type HealthResponse = { status: string };
+
+/**
+ * A Cloudflare Access service token (1100), sent as the `CF-Access-*` headers on every request
+ * to the server. From the PC's server-config QR code; kept only in secure storage.
+ */
+export type CloudflareAccess = { clientId: string; accessKey: string };

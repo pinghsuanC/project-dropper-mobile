@@ -1,6 +1,6 @@
 # 1010: App state and session
 
-Accepted, implemented · updated 2026-11-16 (404 at start-up now forgets the phone) · updated 2026-11-19 (verify-challenge sends the fingerprint; its 404 forgets the phone too) · Part of [1000 App](1000-app.md)
+Accepted, implemented · updated 2026-11-16 (404 at start-up now forgets the phone) · updated 2026-11-19 (verify-challenge sends the fingerprint; its 404 forgets the phone too) · updated 2026-11-22 (the server config and `GET /health` come first, [1100](1100-server-config.md)) · Part of [1000 App](1000-app.md)
 
 Register's own flow (form, register → save → log in, error dialogs) is in
 [1050](1050-register.md).
@@ -20,6 +20,7 @@ written only through `lib/storage.ts`. Storage keys are in `config.ts`.
 | `device_id` | After `POST /auth/register` | Read once at start, copied into the session |
 | User name | On Register | **Local only**: never sent to the server. May be missing (`null`). Read once at start, copied into the session |
 | Device name | On Register | Sent to the server as `name` on register (`/auth/me` returns it). Read once at start, copied into the session |
+| Cloudflare Access client id + access key | On the server config ([1100](1100-server-config.md)) | Read once at start into `api/client.ts`'s memory (not the session). Never logged or shown. `clearDevice()` leaves them |
 
 `getDevice()` returns `{ deviceId, userName, deviceName }`, or `null` when there's no
 `device_id`. `saveDevice()` serves Register; `clearDevice()` serves unregister and a 404 at
@@ -44,6 +45,17 @@ way (decided 2026-11-16), so Register always starts with a new key.
 | Upload queue | Upload screen | Added with its feature. Sent files leave the queue as soon as they're done (they're on the Server page). On leaving `/upload`, failed files are dropped; only in-progress and waiting files are kept. Not kept across app restarts |
 
 ## Start-up (what Landing does)
+
+Since 2026-11-22 two steps come first ([1100](1100-server-config.md)):
+
+```
+getDevice() + getCloudflareAccess() (read once; the values go to api/client.ts)
+ ├─ not done this launch, and no device_id, or no values (not on local) → Server config
+ └─ GET /health (with the values)
+     ├─ Cloudflare refused ─────────────────────────→ Server config
+     ├─ no answer, 503 ─────────────────────────────→ Server unreachable
+     └─ ok → the order below (a Cloudflare refusal anywhere in it → Server config)
+```
 
 ```
 getDevice() → session (read once)
@@ -70,7 +82,8 @@ On any call: network error, timeout, 5xx, or no server URL configured
 
 - **Unreachable** = no usable answer from the server: a network error, timeout or 5xx on
   any call, or a missing `EXPO_PUBLIC_API_BASE_URL`. A 5xx is "unreachable" because
-  registering again can't fix a broken server. No separate `GET /health` call.
+  registering again can't fix a broken server. Since 2026-11-22 start-up calls
+  `GET /health` first (1100); its 503 is unreachable too.
 - **A 404 on the challenge means the server forgot this phone** (e.g. its database was
   reset). Decided 2026-11-16, replacing the earlier "re-register once with the stored name
   and key": the phone forgets it too (`clearDevice()`: `device_id`, both names and the
@@ -96,8 +109,8 @@ On any call: network error, timeout, 5xx, or no server URL configured
   registered popups stay **2 seconds**, then `router.replace(...)` so Back can't return to
   Landing. The delay is a `config.ts` value.
 - The order lives in a pure `lib/startup.ts` that returns an outcome
-  (`welcome` · `notRegistered` · `unreachable`); Landing only maps outcome → popup →
-  redirect.
+  (`welcome` · `notRegistered` · `unreachable` · `serverConfig`); Landing only maps outcome
+  → popup → redirect (`serverConfig`: straight to `/update-server-config`, no popup).
 
 ## Crypto
 

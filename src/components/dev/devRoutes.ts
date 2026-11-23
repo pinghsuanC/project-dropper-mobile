@@ -1,5 +1,5 @@
 // The testing menu's entries (context/details/1020), in the prototype's order
-// (context/prototypes/dev/dev-menu.png). An entry for a screen state passes a `state` search
+// (context/prototypes/dev/dev-menu.png), with the server config (1100) added first. An entry for a screen state passes a `state` search
 // param from src/constants/screenStates.ts; screens read it with useScreenState. Landing
 // has one entry and no state: it always runs the real start-up.
 import type { Href } from 'expo-router';
@@ -10,6 +10,7 @@ import {
   PairingWaitState,
   PropertiesState,
   RegisterState,
+  ServerConfigState,
   ServerFilesState,
   ShareState,
   UploadState,
@@ -22,6 +23,17 @@ export type DevSection = { title: string; entries: DevEntry[] };
 const { sections, entries } = strings.dev;
 
 export const DEV_ROUTES: DevSection[] = [
+  {
+    // Before Landing in the app (1100), so first here too.
+    title: sections.serverConfig,
+    entries: [
+      { label: entries.serverConfig, href: '/update-server-config' },
+      { label: entries.serverConfigCameraNote, href: { pathname: '/update-server-config', params: { state: ServerConfigState.CAMERA_NOTE } } },
+      { label: entries.serverConfigCamera, href: { pathname: '/update-server-config', params: { state: ServerConfigState.CAMERA } } },
+      { label: entries.serverConfigChecking, href: { pathname: '/update-server-config', params: { state: ServerConfigState.CHECKING } } },
+      { label: entries.serverConfigError, href: { pathname: '/update-server-config', params: { state: ServerConfigState.ERROR } } },
+    ],
+  },
   {
     title: sections.landing,
     entries: [{ label: entries.landing, href: '/' }],

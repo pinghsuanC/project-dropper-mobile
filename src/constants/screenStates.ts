@@ -5,6 +5,14 @@
 // same name. Values are camelCase. Landing has none: it always runs the real start-up.
 /* eslint-disable @typescript-eslint/no-redeclare */
 
+export const ServerConfigState = {
+  CAMERA_NOTE: 'cameraNote',
+  CAMERA: 'camera',
+  CHECKING: 'checking',
+  ERROR: 'error',
+} as const;
+export type ServerConfigState = (typeof ServerConfigState)[keyof typeof ServerConfigState];
+
 export const RegisterState = {
   UNREACHABLE: 'unreachable',
   SERVER_ERROR: 'serverError',

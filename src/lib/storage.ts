@@ -3,6 +3,7 @@
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
 import * as SecureStore from 'expo-secure-store';
 
+import type { CloudflareAccess } from '@/api/types';
 import { STORAGE_KEYS } from '@/constants/config';
 
 /** The stored device record. Names can be missing even when the device_id isn't. */
@@ -59,4 +60,31 @@ export async function savePrivateKey(privateKey: Uint8Array): Promise<void> {
 /** Forget only the device_id (its key is gone); names and key stay. */
 export async function deleteDeviceId(): Promise<void> {
   await SecureStore.deleteItemAsync(STORAGE_KEYS.deviceId);
+}
+
+
+/**
+ * The Cloudflare Access service token (1100), or null unless both values are stored. Kept apart
+ * from the device: clearDevice() leaves it, as it belongs to the tunnel, not the registration.
+ */
+export async function getCloudflareAccess(): Promise<CloudflareAccess | null> {
+  const [clientId, accessKey] = await Promise.all([
+    SecureStore.getItemAsync(STORAGE_KEYS.cloudflareClientId),
+    SecureStore.getItemAsync(STORAGE_KEYS.cloudflareAccessKey),
+  ]);
+  return clientId && accessKey ? { clientId, accessKey } : null;
+}
+
+export async function saveCloudflareAccess({ clientId, accessKey }: CloudflareAccess): Promise<void> {
+  await Promise.all([
+    SecureStore.setItemAsync(STORAGE_KEYS.cloudflareClientId, clientId),
+    SecureStore.setItemAsync(STORAGE_KEYS.cloudflareAccessKey, accessKey),
+  ]);
+}
+
+export async function clearCloudflareAccess(): Promise<void> {
+  await Promise.all([
+    SecureStore.deleteItemAsync(STORAGE_KEYS.cloudflareClientId),
+    SecureStore.deleteItemAsync(STORAGE_KEYS.cloudflareAccessKey),
+  ]);
 }
