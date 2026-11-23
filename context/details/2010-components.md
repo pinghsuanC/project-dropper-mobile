@@ -167,6 +167,16 @@ Props added while building, beyond the tables above:
   from the heading (Pairing: "Camera" over "Camera access").
 - **QrCamera** is not a `ui/` component: it lives in `components/pairing/` (1080).
 
+## As built (2026-11-22, Server config)
+
+- **QrScanStep** (`components/pairing/`, not `ui/`: it holds camera logic): the whole QR scan
+  of Pairing step 1 (1080), shared with the server config (1100). Props: `text`
+  (`QrScanText`: balloon, window title, `notices[]`, prompt, `footnotes[]`, `wrongCode`),
+  `onScan(data) → boolean` (true: taken; false: the `wrongCode` error), `onClose?` (the ✕;
+  none = the ✕ is drawn but off), `holdBack?` (Android Back on the start look does nothing),
+  `initialLook?` (`start` · `note` · `camera` · `error`), `initialError?`, `testIDPrefix`.
+  Its camera texts are `strings.qrScan`.
+
 ## As built (2026-11-17, Server files)
 
 - **ListBox** (controls): `items`, `keyOf`, `renderRow`, `emptyText`. A `field` Bevel of

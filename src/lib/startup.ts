@@ -1,13 +1,17 @@
-// The start-up order Landing runs (context/details/1010): read the stored device, log in
+// The start-up order Landing runs (context/details/1010, 1100): read the stored device and
+// Cloudflare values, send a phone without them to the server config, check GET /health, log in
 // with a signed challenge, check the session with /auth/me, and fill the session.
-// Returns an outcome for Landing to show; it never throws.
-import { ApiError } from '@/api/client';
+// Returns an outcome for Landing to act on; it never throws.
+import { ApiError, checkHealth, CloudflareRefusedError, setCloudflareAccess } from '@/api/client';
+import { CLOUDFLARE_ACCESS_REQUIRED } from '@/constants/config';
 import { generateKeyPair } from '@/lib/crypto';
 import { logIn, startSession } from '@/lib/login';
-import { clearDevice, deleteDeviceId, getDevice, getPrivateKey, savePrivateKey } from '@/lib/storage';
+import { isServerConfigDone } from '@/lib/serverConfig';
+import { clearDevice, deleteDeviceId, getCloudflareAccess, getDevice, getPrivateKey, savePrivateKey } from '@/lib/storage';
 import { getSession } from '@/state/session';
 
-export type StartupOutcome = 'welcome' | 'notRegistered' | 'unreachable';
+/** `serverConfig`: go to /update-server-config to scan the PC's server-config QR code (1100). */
+export type StartupOutcome = 'welcome' | 'notRegistered' | 'unreachable' | 'serverConfig';
 
 /** Run start-up once. Retry calls it again. */
 export async function runStartup(): Promise<StartupOutcome> {
@@ -19,17 +23,29 @@ export async function runStartup(): Promise<StartupOutcome> {
 }
 
 /**
+ * Cloudflare refused: the stored service token doesn't work, scan a new one.
  * A 4xx means the server answered and doesn't accept this device: register.
  * Anything else (network error, timeout, 5xx, no server URL) is "unreachable": Retry may
  * help, registering wouldn't.
  */
 function outcomeOf(error: unknown): StartupOutcome {
+  if (error instanceof CloudflareRefusedError) return 'serverConfig';
   if (error instanceof ApiError && error.status >= 400 && error.status < 500) return 'notRegistered';
   return 'unreachable';
 }
 
 async function startup(): Promise<StartupOutcome> {
-  const device = await getDevice();
+  const [device, access] = await Promise.all([getDevice(), getCloudflareAccess()]);
+  setCloudflareAccess(access);
+
+  // A new phone (or one the server forgot), or one without the tunnel's token, scans the PC's
+  // server-config code first, unless it already did in this launch.
+  if (!isServerConfigDone() && (!device || (!access && CLOUDFLARE_ACCESS_REQUIRED))) {
+    return 'serverConfig';
+  }
+
+  // Every launch checks the server first: a refused token goes back to the server config.
+  await checkHealth();
   if (!device) return 'notRegistered';
 
   const privateKey = await getPrivateKey();

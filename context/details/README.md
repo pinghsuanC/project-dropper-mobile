@@ -18,6 +18,7 @@ Thousands are areas, each with a short head file that lists its files. Files go 
 | 1070 | [Server files](1070-server-files.md) | "Server status": files sent and not downloaded yet (`/files/sent`), search, loading / failure / empty, a status bar with the connection, rows with size, type, "Uploaded" date and status |
 | 1080 | [Pairing](1080-pairing.md) | Step 1: scan the PC's QR code, camera permission order (note → Android → error), the scan-once hook, the QR format; step 2: claim the code, then Home (Connected) or the error with Back |
 | 1090 | [Upload](1090-upload.md) | "Pending upload": the queue, picking files, the 500 MB limit, status bar, Back window, popups; sending through the session store, Failed files and Retry failed |
+| 1100 | [Server config](1100-server-config.md) | Before Landing: scan the PC's server-config QR code (the Cloudflare Access service token), check it with `/health`, keep it in secure storage; the `CF-Access-*` headers on every request; when the screen shows |
 | **2000** | [UI](2000-ui.md) | Area head: the look, list of UI files |
 | 2010 | [UI components](2010-components.md) | Layers, folders, every component |
 | 2020 | [Typography](2020-typography.md) | Text roles, tones, fonts |

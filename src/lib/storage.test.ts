@@ -2,10 +2,13 @@ import * as SecureStore from 'expo-secure-store';
 
 import { STORAGE_KEYS } from '@/constants/config';
 import {
+  clearCloudflareAccess,
   clearDevice,
   deleteDeviceId,
+  getCloudflareAccess,
   getDevice,
   getPrivateKey,
+  saveCloudflareAccess,
   saveDevice,
   savePrivateKey,
 } from '@/lib/storage';
@@ -83,6 +86,7 @@ describe('private key', () => {
 it('only ever writes the known storage keys (no session token)', async () => {
   await savePrivateKey(new Uint8Array(32));
   await saveDevice({ deviceId: 'abc-123', userName: 'Ping', deviceName: 'Pixel' });
+  await saveCloudflareAccess({ clientId: 'id', accessKey: 'key' });
   const written = (SecureStore.setItemAsync as jest.Mock).mock.calls.map(([key]) => key);
   expect(written.sort()).toEqual(Object.values(STORAGE_KEYS).sort());
   expect(written.some((key: string) => /token/i.test(key))).toBe(false);
@@ -97,5 +101,43 @@ describe('device_id only', () => {
     expect(store.get(STORAGE_KEYS.userName)).toBe('Ping');
     expect(store.get(STORAGE_KEYS.deviceName)).toBe('Pixel');
     expect(await getPrivateKey()).toEqual(new Uint8Array(32).fill(3));
+  });
+});
+
+describe('Cloudflare Access values (1100)', () => {
+  const ACCESS = { clientId: 'id.access', accessKey: 'cf-secret' };
+
+  it('returns null when none are stored', async () => {
+    expect(await getCloudflareAccess()).toBeNull();
+  });
+
+  it('saves both under their own keys and reads them back', async () => {
+    await saveCloudflareAccess(ACCESS);
+    expect(store.get(STORAGE_KEYS.cloudflareClientId)).toBe('id.access');
+    expect(store.get(STORAGE_KEYS.cloudflareAccessKey)).toBe('cf-secret');
+    expect(await getCloudflareAccess()).toEqual(ACCESS);
+  });
+
+  it.each([
+    ['the client id', 'cloudflareClientId'],
+    ['the access key', 'cloudflareAccessKey'],
+  ] as const)('returns null when %s is missing', async (_label, key) => {
+    await saveCloudflareAccess(ACCESS);
+    store.delete(STORAGE_KEYS[key]);
+    expect(await getCloudflareAccess()).toBeNull();
+  });
+
+  it('clearCloudflareAccess removes both', async () => {
+    await saveCloudflareAccess(ACCESS);
+    await clearCloudflareAccess();
+    expect(store.has(STORAGE_KEYS.cloudflareClientId)).toBe(false);
+    expect(store.has(STORAGE_KEYS.cloudflareAccessKey)).toBe(false);
+  });
+
+  it('clearDevice keeps them: they belong to the tunnel, not the registration', async () => {
+    await saveCloudflareAccess(ACCESS);
+    await saveDevice({ deviceId: 'abc-123', userName: 'Ping', deviceName: 'Pixel' });
+    await clearDevice();
+    expect(await getCloudflareAccess()).toEqual(ACCESS);
   });
 });

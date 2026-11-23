@@ -6,32 +6,41 @@ The Android app for Project Dropper.
 
 <table>
   <tr>
-    <td align="center"><img src="context/prototypes/register/register.png" width="150" alt="Register screen"><br><sub>1. Register</sub></td>
-    <td align="center"><img src="context/prototypes/pairing/pairing-1-scan.png" width="150" alt="Pair screen with the Open camera button"><br><sub>2. Pair</sub></td>
-    <td align="center"><img src="context/prototypes/home/home-paired-01.png" width="150" alt="Home screen"><br><sub>3. Home</sub></td>
-    <td align="center"><img src="context/prototypes/server/server-files.png" width="150" alt="Server files screen"><br><sub>4. Server files</sub></td>
-    <td align="center"><img src="context/prototypes/upload/upload-in-progress.png" width="150" alt="Upload screen sending files"><br><sub>5. Upload</sub></td>
+    <td align="center"><img src="context/prototypes/register/register.png" width="150" alt="Register screen"><br><sub>2. Register</sub></td>
+    <td align="center"><img src="context/prototypes/pairing/pairing-1-scan.png" width="150" alt="Pair screen with the Open camera button"><br><sub>3. Pair</sub></td>
+    <td align="center"><img src="context/prototypes/home/home-paired-01.png" width="150" alt="Home screen"><br><sub>4. Home</sub></td>
+    <td align="center"><img src="context/prototypes/server/server-files.png" width="150" alt="Server files screen"><br><sub>5. Server files</sub></td>
+    <td align="center"><img src="context/prototypes/upload/upload-in-progress.png" width="150" alt="Upload screen sending files"><br><sub>6. Upload</sub></td>
   </tr>
 </table>
 
 ```mermaid
 flowchart LR
+  Connect["Connect (scan the PC's server code)"] --> Register
   Register --> Pair["Pair (scan the PC's QR code)"] --> Home
   Home <--> Files[Server files]
   Home <--> Upload
 ```
 
-1. **Register**: on first launch, enter your name and a name for the phone. The phone
-   registers itself with your own server; there's no password to remember.
-2. **Pair**: open the camera and scan the QR code that the desktop app shows. The desktop
-   app lives in its own repo, [project-dropper](https://github.com/pinghsuanC/project-dropper).
-   A phone pairs with one PC.
-3. **Home**: greets you with a quote of the day, checks the connection to your server, and
+1. **Connect**: on first launch, scan the server code that the desktop app shows. It holds
+   the key that lets the phone through the Cloudflare tunnel in front of your server. The
+   phone checks it against the server, then keeps it in the phone's secure storage (never in
+   the app's settings, which anyone with the APK could read). It looks like the Pair screen,
+   with its own text. The desktop app lives in its own repo,
+   [project-dropper](https://github.com/pinghsuanC/project-dropper).
+2. **Register**: enter your name and a name for the phone. The phone registers itself with
+   your own server; there's no password to remember.
+3. **Pair**: open the camera and scan the pairing QR code that the desktop app shows. A
+   phone pairs with one PC.
+4. **Home**: greets you with a quote of the day, checks the connection to your server, and
    asks whether you want to upload.
-4. **Server files**: see and search the files already on the server.
-5. **Upload**: add files to the queue and send them to your PC, with progress for each file.
+5. **Server files**: see and search the files already on the server.
+6. **Upload**: add files to the queue and send them to your PC, with progress for each file.
 
-From then on, the app signs in by itself each time it starts and opens Home. These are the
+From then on, the app checks the server and signs in by itself each time it starts, and
+opens Home. If the tunnel ever turns the phone away (say the key was replaced), it goes back
+to Connect to scan a new server code. On a local server (`EXPO_PUBLIC_APP_ENV=local`) there's
+no tunnel, so Connect only shows on a phone that isn't registered yet. These are the
 main screens only; every screen and error state is in
 [`context/prototypes/`](context/prototypes/) (see [Prototype](#prototype)).
 
@@ -67,14 +76,16 @@ yourself. There are three pieces:
 - **This app** (Android, Expo): registers the phone, pairs it with a PC, and uploads files.
 - **The server** (FastAPI): signs devices in, pairs them, and hands out upload links.
   File bytes go straight to cloud storage (Cloudflare R2), not through the server.
-- **The desktop app**: shows the pairing QR code and downloads the files sent to it.
+- **The desktop app**: shows the server code and the pairing QR code, and downloads the
+  files sent to it.
 
 The server and desktop app live in
 [project-dropper](https://github.com/pinghsuanC/project-dropper).
 
 **Built so far:** a route for every screen, the Windows 98 look and its shared components,
 sign-in on every start-up (register once, then sign a server challenge with the phone's
-own key), and a dev-only testing menu that opens any screen in any state.
+own key), the server code scan that gets the phone through the Cloudflare tunnel, and a
+dev-only testing menu that opens any screen in any state.
 
 **Next:** pairing with the PC, the server file list, and sending files. Their server
 routes are still planned, so they wait on the server.

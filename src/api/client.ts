@@ -1,8 +1,15 @@
 // The only place that calls fetch (CLAUDE.md "Code conventions"). Adds the auth header from
-// the session, unwraps the envelope, and turns failures into ApiError / UnreachableError.
-// Error messages never include the URL or the token.
-import type { Envelope, ErrorDetail } from '@/api/types';
-import { apiBaseUrl, REQUEST_TIMEOUT_MS } from '@/constants/config';
+// the session and the Cloudflare Access headers (1100), unwraps the envelope, and turns
+// failures into ApiError / CloudflareRefusedError / UnreachableError.
+// Error messages never include the URL, the token or the Cloudflare values.
+import type { CloudflareAccess, Envelope, ErrorDetail, HealthResponse } from '@/api/types';
+import {
+  API_PATHS,
+  apiBaseUrl,
+  CLOUDFLARE_ACCESS_LOGIN_HOST,
+  CLOUDFLARE_HEADERS,
+  REQUEST_TIMEOUT_MS,
+} from '@/constants/config';
 import { getSession } from '@/state/session';
 
 /** The server answered with a non-2xx status. */
@@ -14,6 +21,29 @@ export class ApiError extends Error {
     super(`Server returned ${status}`);
     this.name = 'ApiError';
   }
+}
+
+/**
+ * Cloudflare Access turned the request away before it reached the server (1100): the stored
+ * service token is missing, wrong or expired. Still an ApiError, so code that only knows
+ * ApiError treats it as before.
+ */
+export class CloudflareRefusedError extends ApiError {
+  constructor(status: number) {
+    super(status, null);
+    this.name = 'CloudflareRefusedError';
+  }
+}
+
+/**
+ * The Cloudflare Access values sent on every request, in memory. Start-up loads them from
+ * secure storage, and the server-config screen sets them after saving (lib/serverConfig.ts).
+ * null = send none (local dev, or not configured yet).
+ */
+let cloudflareAccess: CloudflareAccess | null = null;
+
+export function setCloudflareAccess(access: CloudflareAccess | null): void {
+  cloudflareAccess = access;
 }
 
 /** No answer: network error, server down, or timeout. */
@@ -33,10 +63,51 @@ type RequestOptions = {
 
 /** Call a server route and return its envelope's `data`. */
 export async function request<T>(path: string, { method = 'GET', body, auth = false }: RequestOptions = {}): Promise<T> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const token = auth ? getSession().token : null;
   if (token) headers.Authorization = `Bearer ${token}`;
+
+  const { response, json } = await send(path, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!isEnvelope<T>(json)) {
+    throw new ApiError(response.status, null);
+  }
+  return json.data;
+}
+
+/**
+ * `GET /health` (1100): resolves when the server is up and can reach its database. It has no
+ * envelope. Sends the stored Cloudflare values, or `access` when given (to try scanned values
+ * before saving them; null = none). Throws UnreachableError (no answer), CloudflareRefusedError,
+ * or ApiError (a 503, or an answer that isn't `{ "status": "ok" }`).
+ */
+export async function checkHealth(access: CloudflareAccess | null = cloudflareAccess): Promise<void> {
+  const { response, json } = await send(API_PATHS.health, { method: 'GET', headers: {} }, access);
+  if ((json as Partial<HealthResponse> | undefined)?.status !== 'ok') {
+    throw new ApiError(response.status, null);
+  }
+}
+
+type SendInit = { method: 'GET' | 'POST'; headers: Record<string, string>; body?: string };
+
+/**
+ * One request to the server: adds Accept and the Cloudflare headers, times out, reads the JSON
+ * and throws on a non-2xx or a Cloudflare refusal. Returns the response and its JSON.
+ */
+async function send(
+  path: string,
+  { method, headers, body }: SendInit,
+  access: CloudflareAccess | null = cloudflareAccess,
+): Promise<{ response: Response; json: unknown }> {
+  const allHeaders: Record<string, string> = { Accept: 'application/json', ...headers };
+  if (access) {
+    allHeaders[CLOUDFLARE_HEADERS.clientId] = access.clientId;
+    allHeaders[CLOUDFLARE_HEADERS.accessKey] = access.accessKey;
+  }
 
   const url = apiBaseUrl() + path;
   const controller = new AbortController();
@@ -46,27 +117,31 @@ export async function request<T>(path: string, { method = 'GET', body, auth = fa
   try {
     let response: Response;
     try {
-      response = await fetch(url, {
-        method,
-        headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
-        signal: controller.signal,
-      });
+      response = await fetch(url, { method, headers: allHeaders, body, signal: controller.signal });
     } catch {
       throw new UnreachableError();
     }
 
     const json = await readJson(response, controller.signal);
+    if (isCloudflareRefusal(response, json)) {
+      throw new CloudflareRefusedError(response.status);
+    }
     if (!response.ok) {
       throw new ApiError(response.status, detailOf(json));
     }
-    if (!isEnvelope<T>(json)) {
-      throw new ApiError(response.status, null);
-    }
-    return json.data;
+    return { response, json };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Cloudflare Access answered instead of the server (1100): a 401 / 403 without our JSON
+ * `detail` (the server's own errors always have one), or a redirect to Access's login page.
+ */
+function isCloudflareRefusal(response: Response, json: unknown): boolean {
+  if (response.url?.includes(CLOUDFLARE_ACCESS_LOGIN_HOST)) return true;
+  return (response.status === 401 || response.status === 403) && detailOf(json) === null;
 }
 
 /** The parsed body, or undefined when it isn't JSON. A timeout while reading is "unreachable". */

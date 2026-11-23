@@ -11,6 +11,12 @@ function readAppEnv(raw: string | undefined): AppEnv {
 export const APP_ENV: AppEnv = readAppEnv(process.env.EXPO_PUBLIC_APP_ENV);
 export const SHOW_TESTING_MENU = APP_ENV !== 'prod';
 
+/**
+ * Whether the server sits behind Cloudflare Access, so the phone needs the service token from
+ * the PC's server-config QR code (1100). Not on local: the phone talks to uvicorn on the PC.
+ */
+export const CLOUDFLARE_ACCESS_REQUIRED = APP_ENV !== 'local';
+
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL?.trim() ?? '';
 
 /** The server address, without a trailing slash. Throws when it isn't configured. */
@@ -23,6 +29,7 @@ export function apiBaseUrl(): string {
 
 /** Server routes (the server repo's API.md). */
 export const API_PATHS = {
+  health: '/health',
   register: '/auth/register',
   challenge: '/auth/challenge',
   verifyChallenge: '/auth/verify-challenge',
@@ -33,6 +40,18 @@ export const API_PATHS = {
   prepareBatchUpload: '/files/prepare-batch-upload',
   finishBatchUpload: '/files/finish-batch-upload',
 } as const;
+
+/** The headers that carry the Cloudflare Access service token (the server repo's API.md). */
+export const CLOUDFLARE_HEADERS = {
+  clientId: 'CF-Access-Client-Id',
+  accessKey: 'CF-Access-Client-Secret',
+} as const;
+
+/**
+ * Where Cloudflare Access sends a request it turns away to log in (`<team>.cloudflareaccess.com`).
+ * A response from there means Cloudflare refused, not the server (1100).
+ */
+export const CLOUDFLARE_ACCESS_LOGIN_HOST = 'cloudflareaccess.com';
 
 /**
  * An upload to R2 that reports no progress for this long is cancelled (and counts as failed).
@@ -94,4 +113,7 @@ export const STORAGE_KEYS = {
   deviceId: 'device.id',
   userName: 'device.user_name',
   deviceName: 'device.name',
+  /** The Cloudflare Access service token from the PC's server-config QR code (1100). */
+  cloudflareClientId: 'cloudflare.client_id',
+  cloudflareAccessKey: 'cloudflare.access_key',
 } as const;

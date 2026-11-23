@@ -68,6 +68,10 @@ The app reads the server URL from `EXPO_PUBLIC_API_BASE_URL` (in `.env`), only i
 
 ## How the app works
 
+0. **Server config** (1100): before Landing, a phone with no `device_id`, no Cloudflare values
+   (except on local), or refused by Cloudflare scans the PC's server-config QR
+   (`{ cloudflare_client_id, cloudflare_access_key }`), checks it with `GET /health`, and keeps
+   it in secure storage. Every launch then calls `GET /health` first.
 1. **Device identity**: on first launch, generate an Ed25519 key pair. The private key is stored
    ONLY in `expo-secure-store`. Device fingerprint = SHA-256 hex of the Android ID (`expo-application`).
 2. **Register**: `POST /auth/register` → save `device_id` in secure storage.
@@ -93,6 +97,9 @@ If the contract needs to change, tell me instead.
 All responses use the envelope `{ "message": string, "data": ... }`. Errors are `{ "detail": ... }`;
 a 422 is a list (`{ "detail": [{ "loc", "msg", "type" }] }`). Protected routes need
 `Authorization: Bearer <session_token>`; never send it to R2 (`upload_url`).
+Behind the deployed server's Cloudflare Access, every request (public routes too) also sends
+`CF-Access-Client-Id` / `CF-Access-Client-Secret` (from secure storage, never `.env`); never
+send them to R2 either.
 
 Built routes the phone uses (from `API.md`, 2026-11-16). Every route can also return 422.
 Protected routes can also return 401 (no or expired session) and 403 (device revoked).

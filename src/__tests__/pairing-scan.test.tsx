@@ -89,7 +89,7 @@ describe('step 1', () => {
 
   test('sits on the teal desktop, not the platform grey', async () => {
     await open();
-    expect(backgroundBehind('pairing-step-one')).toBe(colors.desktop);
+    expect(backgroundBehind('pairing-start')).toBe(colors.desktop);
   });
 
   test('Open camera has a set width, so it keeps its size (an auto-width large button stretched on Android)', async () => {
@@ -287,7 +287,7 @@ describe('camera note', () => {
   test('step 1 is hidden from screen readers while it is open', async () => {
     await open();
     await press(p.openCamera);
-    expect(screen.getByTestId('pairing-step-one', HIDDEN).props.importantForAccessibility).toBe('no-hide-descendants');
+    expect(screen.getByTestId('pairing-start', HIDDEN).props.importantForAccessibility).toBe('no-hide-descendants');
   });
 
   test('Android Back closes it', async () => {

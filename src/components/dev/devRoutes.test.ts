@@ -7,6 +7,7 @@ import {
   PairingWaitState,
   PropertiesState,
   RegisterState,
+  ServerConfigState,
   ServerFilesState,
   ShareState,
   UploadState,
@@ -19,6 +20,7 @@ const { sections } = strings.dev;
 
 /** The app's screens (context/details/1030), without the menu itself. */
 const ROUTES = [
+  '/update-server-config',
   '/',
   '/register',
   '/home',
@@ -34,8 +36,9 @@ const pathOf = (href: Href) => (typeof href === 'string' ? href : href.pathname)
 const stateOf = (href: Href) => (typeof href === 'string' ? undefined : href.params?.state);
 const allEntries = () => DEV_ROUTES.flatMap((section) => section.entries);
 
-test('lists the prototype sections in order', () => {
+test('lists the prototype sections in order, after the server config (1100)', () => {
   expect(DEV_ROUTES.map((s) => s.title)).toEqual([
+    sections.serverConfig,
     sections.landing,
     sections.register,
     sections.home,
@@ -48,7 +51,7 @@ test('lists the prototype sections in order', () => {
 });
 
 test('each section has the prototype number of entries (Landing: one, it runs for real)', () => {
-  expect(DEV_ROUTES.map((s) => s.entries.length)).toEqual([1, 3, 4, 6, 2, 5, 3, 2]);
+  expect(DEV_ROUTES.map((s) => s.entries.length)).toEqual([5, 1, 3, 4, 6, 2, 5, 3, 2]);
 });
 
 test('every entry has a label, and no two entries share one', () => {
@@ -66,7 +69,7 @@ test('every entry opens one of the app screens, never the menu itself', () => {
 test('screens with a default view have a plain entry, and states use a camelCase `state` param', () => {
   // Pairing step 2 has none: opened without a code from step 1 it shows its error.
   const plain = allEntries().filter((e) => stateOf(e.href) === undefined).map((e) => pathOf(e.href));
-  expect(plain).toEqual(expect.arrayContaining(['/', '/register', '/pairing/scan', '/upload', '/share', '/properties']));
+  expect(plain).toEqual(expect.arrayContaining(['/update-server-config', '/', '/register', '/pairing/scan', '/upload', '/share', '/properties']));
 
   for (const { href } of allEntries()) {
     const state = stateOf(href);
@@ -87,6 +90,7 @@ test('Landing is never sent a state: it always runs the real start-up', () => {
 
 /** Each screen's state list (src/constants/screenStates.ts). Landing has none. */
 const STATES_BY_PATH: Record<string, Record<string, string>> = {
+  '/update-server-config': ServerConfigState,
   '/': {},
   '/register': RegisterState,
   '/home': HomeState,

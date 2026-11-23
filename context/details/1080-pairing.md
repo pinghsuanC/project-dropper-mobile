@@ -1,6 +1,6 @@
 # 1080: Pairing
 
-Accepted, implemented · 2026-11-17 · updated 2026-11-19 (step 2: claim the code, then Home; asking again after a refusal, Open settings, Open camera's width) · Part of [1000 App](1000-app.md)
+Accepted, implemented · 2026-11-17 · updated 2026-11-19 (step 2: claim the code, then Home; asking again after a refusal, Open settings, Open camera's width) · updated 2026-11-22 (step 1 is the shared `QrScanStep`, also used by the server config, [1100](1100-server-config.md)) · Part of [1000 App](1000-app.md)
 
 Pairing connects this phone to the user's PC: the PC shows a QR code (pairing code + server
 URL), the phone scans it and claims it on the server (`POST /pairing-request/claim`), which
@@ -8,6 +8,13 @@ pairs the two. Step 1 scans, step 2 claims.
 Prototypes: `context/prototypes/pairing/`. Components are in [2010](2010-components.md).
 
 ## Step 1 (`/pairing/scan`)
+
+Since 2026-11-22 step 1 is a thin screen around the shared `QrScanStep`
+(`components/pairing/`, [2010](2010-components.md)), which the server config (1100) uses too:
+the looks, permission order and errors below are that component's. Step 1 gives it Pairing's
+text, its ✕, and what a scanned code does (`pairingTokenFrom`). The camera texts are
+`strings.qrScan`, spread into `strings.pairing`. The test IDs are `pairing-start`,
+`pairing-open-camera`, `pairing-note`, `pairing-error`.
 
 Opened from Home – unpaired ("I want to connect to my PC"). Four looks:
 
