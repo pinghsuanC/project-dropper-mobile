@@ -1,10 +1,10 @@
+import { setCloudflareAccess } from '@/api/apiHeaders';
 import {
   ApiError,
   checkHealth,
   CloudflareRefusedError,
   detailText,
   request,
-  setCloudflareAccess,
   UnreachableError,
 } from '@/api/client';
 import { REQUEST_TIMEOUT_MS } from '@/constants/config';
@@ -246,6 +246,15 @@ describe('Cloudflare Access headers', () => {
     expect(headers.Authorization).toBe('Bearer secret-token');
     expect(headers['CF-Access-Client-Id']).toBe('id.access');
     expect(headers['CF-Access-Client-Secret']).toBe('cf-secret-key');
+  });
+
+  it('puts them on the fetch to the API server itself (its origin, from apiBaseUrl)', async () => {
+    setCloudflareAccess(ACCESS);
+    respond(200, { message: 'ok', data: {} });
+    await request('/files/sent', { auth: false });
+    const { url, init } = lastCall();
+    expect(url).toBe('http://server.test:8000/files/sent');
+    expect(init.headers['CF-Access-Client-Id']).toBe('id.access');
   });
 
   it('sends neither header when no values are set', async () => {

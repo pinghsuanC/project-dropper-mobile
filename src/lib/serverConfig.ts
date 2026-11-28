@@ -1,7 +1,8 @@
 // The server config (context/details/1100): the Cloudflare Access service token from the PC's
 // server-config QR code. Checked with GET /health before it is kept; once kept, it lives in
-// secure storage and in api/client.ts's memory.
-import { checkHealth, CloudflareRefusedError, setCloudflareAccess } from '@/api/client';
+// secure storage and in api/apiHeaders.ts's memory.
+import { setCloudflareAccess } from '@/api/apiHeaders';
+import { checkHealth, CloudflareRefusedError } from '@/api/client';
 import type { ServerConfig } from '@/lib/serverConfigQr';
 import { clearCloudflareAccess, saveCloudflareAccess } from '@/lib/storage';
 

@@ -81,10 +81,19 @@ comes before Landing.
 
 ## The API client
 
-- `api/client.ts` keeps the values in memory (`setCloudflareAccess`), loaded once by start-up
-  from storage and set by `applyServerConfig`, and adds `CF-Access-Client-Id` /
-  `CF-Access-Client-Secret` to every request, public and protected. None stored: neither
-  header. The R2 upload (`api/upload.ts`) never gets them.
+- **`api/apiHeaders.ts` is the one place that builds them**, like the desktop's
+  `api_session.py`. It keeps the values in memory (`setCloudflareAccess`), loaded once by
+  start-up from storage and set by `applyServerConfig`. `withApiHeaders(url, headers, access?)`
+  adds `CF-Access-Client-Id` / `CF-Access-Client-Secret` only when `isApiUrl(url)`: the URL's
+  origin (scheme, host and port, lower-cased, default port filled in) equals
+  `apiBaseUrl()`'s. It compares origins, not a prefix, so `<api host>.attacker.com`, a URL with
+  user info (`<api host>@attacker.com`) or another port never matches. Any other host (R2,
+  a public API added later) gets nothing. A header the caller set is kept, and a copy is
+  returned. The origin is parsed by hand because React Native's `URL` doesn't reliably give
+  the scheme and host.
+- `api/client.ts` `send()` passes every request through `withApiHeaders`, public and
+  protected. None stored: neither header. The R2 upload (`api/upload.ts`) doesn't use the
+  client and never gets them.
 - `checkHealth(access?)`: `GET /health` has no envelope; OK is 200 `{ "status": "ok" }`.
   Given `access`, it tries those values (null = none) instead of the stored ones.
 - **`CloudflareRefusedError`** (an `ApiError` subclass, so code that only knows `ApiError`

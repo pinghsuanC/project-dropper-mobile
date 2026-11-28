@@ -6,7 +6,7 @@ import { sha256, sha512 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 import * as SecureStore from 'expo-secure-store';
 
-import { setCloudflareAccess } from '@/api/client';
+import { setCloudflareAccess } from '@/api/apiHeaders';
 import { apiBaseUrl, STORAGE_KEYS } from '@/constants/config';
 import { markServerConfigDone, resetServerConfigDone } from '@/lib/serverConfig';
 import { runStartup } from '@/lib/startup';

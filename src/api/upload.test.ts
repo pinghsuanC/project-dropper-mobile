@@ -4,7 +4,7 @@
 import * as fileSystem from 'expo-file-system';
 import type { UploadOptions } from 'expo-file-system';
 
-import { setCloudflareAccess } from '@/api/client';
+import { setCloudflareAccess } from '@/api/apiHeaders';
 import { putFile, UploadError } from '@/api/upload';
 import { UPLOAD_STALL_TIMEOUT_MS } from '@/constants/config';
 import { getSession } from '@/state/session';

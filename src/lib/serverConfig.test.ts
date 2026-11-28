@@ -2,7 +2,8 @@
 // first, and only a working config is saved. The API client is mocked; storage is real.
 import * as SecureStore from 'expo-secure-store';
 
-import { checkHealth, CloudflareRefusedError, setCloudflareAccess, UnreachableError } from '@/api/client';
+import { setCloudflareAccess } from '@/api/apiHeaders';
+import { checkHealth, CloudflareRefusedError, UnreachableError } from '@/api/client';
 import { STORAGE_KEYS } from '@/constants/config';
 import { applyServerConfig, isServerConfigDone, markServerConfigDone, resetServerConfigDone } from '@/lib/serverConfig';
 import { getCloudflareAccess, saveCloudflareAccess } from '@/lib/storage';
@@ -22,8 +23,12 @@ jest.mock('expo-secure-store', () => {
 });
 jest.mock('@/api/client', () => {
   const actual = jest.requireActual('@/api/client');
-  return { ...actual, checkHealth: jest.fn(), setCloudflareAccess: jest.fn() };
+  return { ...actual, checkHealth: jest.fn() };
 });
+jest.mock('@/api/apiHeaders', () => ({
+  ...jest.requireActual('@/api/apiHeaders'),
+  setCloudflareAccess: jest.fn(),
+}));
 
 const store = (SecureStore as unknown as { __store: Map<string, string> }).__store;
 const checkHealthMock = jest.mocked(checkHealth);
