@@ -1,15 +1,10 @@
 // The only place that calls fetch (CLAUDE.md "Code conventions"). Adds the auth header from
-// the session and the Cloudflare Access headers (1100), unwraps the envelope, and turns
-// failures into ApiError / CloudflareRefusedError / UnreachableError.
+// the session and, through api/apiHeaders.ts, the Cloudflare Access headers (1100); unwraps the
+// envelope, and turns failures into ApiError / CloudflareRefusedError / UnreachableError.
 // Error messages never include the URL, the token or the Cloudflare values.
+import { withApiHeaders } from '@/api/apiHeaders';
 import type { CloudflareAccess, Envelope, ErrorDetail, HealthResponse } from '@/api/types';
-import {
-  API_PATHS,
-  apiBaseUrl,
-  CLOUDFLARE_ACCESS_LOGIN_HOST,
-  CLOUDFLARE_HEADERS,
-  REQUEST_TIMEOUT_MS,
-} from '@/constants/config';
+import { API_PATHS, apiBaseUrl, CLOUDFLARE_ACCESS_LOGIN_HOST, REQUEST_TIMEOUT_MS } from '@/constants/config';
 import { getSession } from '@/state/session';
 
 /** The server answered with a non-2xx status. */
@@ -33,17 +28,6 @@ export class CloudflareRefusedError extends ApiError {
     super(status, null);
     this.name = 'CloudflareRefusedError';
   }
-}
-
-/**
- * The Cloudflare Access values sent on every request, in memory. Start-up loads them from
- * secure storage, and the server-config screen sets them after saving (lib/serverConfig.ts).
- * null = send none (local dev, or not configured yet).
- */
-let cloudflareAccess: CloudflareAccess | null = null;
-
-export function setCloudflareAccess(access: CloudflareAccess | null): void {
-  cloudflareAccess = access;
 }
 
 /** No answer: network error, server down, or timeout. */
@@ -85,7 +69,7 @@ export async function request<T>(path: string, { method = 'GET', body, auth = fa
  * before saving them; null = none). Throws UnreachableError (no answer), CloudflareRefusedError,
  * or ApiError (a 503, or an answer that isn't `{ "status": "ok" }`).
  */
-export async function checkHealth(access: CloudflareAccess | null = cloudflareAccess): Promise<void> {
+export async function checkHealth(access?: CloudflareAccess | null): Promise<void> {
   const { response, json } = await send(API_PATHS.health, { method: 'GET', headers: {} }, access);
   if ((json as Partial<HealthResponse> | undefined)?.status !== 'ok') {
     throw new ApiError(response.status, null);
@@ -95,21 +79,19 @@ export async function checkHealth(access: CloudflareAccess | null = cloudflareAc
 type SendInit = { method: 'GET' | 'POST'; headers: Record<string, string>; body?: string };
 
 /**
- * One request to the server: adds Accept and the Cloudflare headers, times out, reads the JSON
- * and throws on a non-2xx or a Cloudflare refusal. Returns the response and its JSON.
+ * One request to the server: adds Accept and the API server's headers (`access` given replaces
+ * the stored Cloudflare values; null = none), times out, reads the JSON and throws on a non-2xx
+ * or a Cloudflare refusal. Returns the response and its JSON.
  */
 async function send(
   path: string,
   { method, headers, body }: SendInit,
-  access: CloudflareAccess | null = cloudflareAccess,
+  access?: CloudflareAccess | null,
 ): Promise<{ response: Response; json: unknown }> {
-  const allHeaders: Record<string, string> = { Accept: 'application/json', ...headers };
-  if (access) {
-    allHeaders[CLOUDFLARE_HEADERS.clientId] = access.clientId;
-    allHeaders[CLOUDFLARE_HEADERS.accessKey] = access.accessKey;
-  }
-
   const url = apiBaseUrl() + path;
+  // `access` undefined falls back to the stored values (withApiHeaders' default); null = none.
+  const allHeaders = withApiHeaders(url, { Accept: 'application/json', ...headers }, access);
+
   const controller = new AbortController();
   // One timer for the whole request: headers *and* body, so a stalled body can't hang.
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);

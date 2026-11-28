@@ -15,6 +15,7 @@
 
 # History
 
+- 2026-11-27: The Cloudflare Access headers are built in one place and sent only to the API server's own address, never to R2 or any other host; .env.example shows the deployed server
 - 2026-11-22: Server config before Landing: a new phone, one without the Cloudflare values (except on local) or one Cloudflare refuses scans the PC's server code, checked with /health and kept in secure storage; every request carries the CF-Access headers, and every launch checks /health first
 - 2026-11-20: Pairing fixes: Open camera keeps its size, both steps sit on the teal desktop, a refused camera is asked for again (Open settings once Android blocks it), and step 2 shows its loading bar for at least 2 seconds
 - 2026-11-19: Pairing step 2: a scanned PC code is claimed on the server, then Home shows Connected, or an error with Back to scan again; step 1 turns away QR codes that aren't pairing codes and says codes last 3 minutes
@@ -74,3 +75,5 @@ Grouped by the app's sections (the same ones as the prototype's dev menu).
 - iOS compatibility (turn it into a web app)
 - Multi-language support (all text is already in `strings.ts`; CJK fonts noted in `context/details/2020-typography.md`)
 - Custom splash screen: Win98 teal background and a pixel-art icon, matching Landing so the handoff doesn't flash. Android 12+ allows only a colour and one centred image (masked to a circle); no text or GIFs. Check it in a release build, not Expo Go
+- Clean up the app's routes, so each screen has one clear route
+- Define how the app handles each kind of error (an expired Cloudflare service token, a revoked device, the server unreachable, and so on), so every screen shows a clear message and what to do next

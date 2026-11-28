@@ -2,7 +2,8 @@
 // Cloudflare values, send a phone without them to the server config, check GET /health, log in
 // with a signed challenge, check the session with /auth/me, and fill the session.
 // Returns an outcome for Landing to act on; it never throws.
-import { ApiError, checkHealth, CloudflareRefusedError, setCloudflareAccess } from '@/api/client';
+import { setCloudflareAccess } from '@/api/apiHeaders';
+import { ApiError, checkHealth, CloudflareRefusedError } from '@/api/client';
 import { CLOUDFLARE_ACCESS_REQUIRED } from '@/constants/config';
 import { generateKeyPair } from '@/lib/crypto';
 import { logIn, startSession } from '@/lib/login';
